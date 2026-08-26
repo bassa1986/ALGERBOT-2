@@ -1,15 +1,18 @@
-﻿import { createServer } from "http";
-import { createRequestHandler } from "@tanstack/react-start/server";
-import { getManifest } from "./dist/manifest.json" assert { type: "json" };
+﻿import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { createServer } from "node:http";
 
-const handler = createRequestHandler({
-  manifest: getManifest(),
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Import the built server
+const { handler } = await import("../dist/server/server.js");
 
 const port = process.env.PORT || 3000;
+const host = "0.0.0.0";
 
 const server = createServer(handler);
 
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on port ${port}`);
+server.listen(port, host, () => {
+  console.log(`✓ Server listening on http://${host}:${port}`);
 });
