@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+/*
+  AlgerBot design tokens — warm North-African palette built around the
+  espresso-brown circular logo mark. Components must reference these
+  semantic custom properties (var(--color-*)) rather than hardcoding hex
+  values or using Tailwind's default palette, so the brand stays
+  consistent and themeable in one place.
+*/
+@theme {
+  /* Core brand palette */
+  --color-espresso: #3b2417; /* primary text, logo line color */
+  --color-espresso-light: #5c3a26;
+  --color-terracotta: #c1502e; /* primary action color */
+  --color-terracotta-dark: #a03f22;
+  --color-sand: #f2e4d0; /* app background */
+  --color-sand-light: #f8f0e3;
+  --color-saffron: #e8a33d; /* accent, highlights, badges */
+  --color-saffron-light: #f3c778;
+
+  /* Semantic aliases used throughout components */
+  --color-surface: var(--color-sand-light);
+  --color-surface-muted: var(--color-sand);
+  --color-text-primary: var(--color-espresso);
+  --color-text-muted: var(--color-espresso-light);
+  --color-action-primary: var(--color-terracotta);
+  --color-action-primary-hover: var(--color-terracotta-dark);
+  --color-accent: var(--color-saffron);
+  --color-danger: #b3261e;
+  --color-success: #2f6b3a;
+  --color-border: #ddc9ab;
+
+  /* Typography: avoid generic SaaS defaults (Inter/Poppins). Cairo covers
+     Arabic + Latin well for an RTL-first marketplace; Tajawal as a
+     secondary display option for headings. */
+  --font-sans: 'Cairo', 'Tajawal', system-ui, sans-serif;
+}
+
+html,
+body {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+/* Larger default tap targets for mobile-first buyer/merchant use */
+button,
+a[role='button'],
+input,
+select,
+textarea {
+  min-height: 2.75rem;
+}
