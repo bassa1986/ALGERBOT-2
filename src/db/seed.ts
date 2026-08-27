@@ -42,9 +42,9 @@ async function seedSubscriptionSettings(sql: postgres.Sql) {
 }
 
 async function main() {
-  const connectionString = process.env.PIVOTCLOUD_DATABASE_URL
+  const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
-    console.error('PIVOTCLOUD_DATABASE_URL is not set')
+    console.error('DATABASE_URL is not set')
     process.exit(1)
   }
 
