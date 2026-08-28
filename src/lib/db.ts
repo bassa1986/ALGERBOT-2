@@ -22,9 +22,9 @@ let _sql: postgres.Sql | null = null
 export function getDb(): postgres.Sql {
   if (_sql) return _sql
 
-  const connectionString = process.env.PIVOTCLOUD_DATABASE_URL
+  const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
-    throw new Error('PIVOTCLOUD_DATABASE_URL is not set')
+    throw new Error('DATABASE_URL is not set')
   }
 
   _sql = postgres(connectionString, {
