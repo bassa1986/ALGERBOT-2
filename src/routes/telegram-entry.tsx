@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react'
 import { useServerFn, createServerFn } from '@tanstack/react-start'
 import { loginWithTelegramWebApp } from '~/server/auth'
 import { getInitData, isInsideTelegram, initTelegramWebApp } from '~/lib/telegram-webapp.browser'
-import { getOptionalMerchantSession } from '~/lib/auth'
+import { getOptionalSession } from '~/server/auth'
 
-const checkSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await getOptionalMerchantSession()
+async function checkSession() {
+  const session = await getOptionalSession()
   return { isAuthenticated: session !== null }
-})
+}
 
 /**
  * Entry point when the merchant opens the app's Telegram bot menu button —
@@ -69,3 +69,6 @@ function TelegramEntryPage() {
     </div>
   )
 }
+
+
+

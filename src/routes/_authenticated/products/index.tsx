@@ -298,3 +298,5 @@ function InlinePhotoControl({ productId, onChanged }: { productId: string; onCha
     </div>
   )
 }
+
+

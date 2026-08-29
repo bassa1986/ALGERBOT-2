@@ -290,3 +290,5 @@ function SpecTable({ description, specificationsLabel }: { description: string; 
     </div>
   )
 }
+
+

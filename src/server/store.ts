@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
@@ -188,4 +188,6 @@ export const setMyDeliveryZones = createServerFn({ method: 'POST' })
 
     return { ok: true, count: data.zones.length }
   })
+
+
 

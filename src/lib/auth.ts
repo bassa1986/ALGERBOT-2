@@ -1,5 +1,5 @@
 import { createMiddleware } from '@tanstack/react-start'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { generateSessionToken, sha256Hex, signToken, verifySignedToken } from '~/lib/crypto'
 import { setSessionCookie, clearSessionCookie, readSessionCookieValue } from '~/lib/session-cookie'
 
@@ -159,4 +159,5 @@ export async function getOptionalAdminSession(): Promise<AdminSession | null> {
   if (!session || !session.adminId) return null
   return { adminId: session.adminId }
 }
+
 

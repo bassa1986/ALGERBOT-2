@@ -58,3 +58,5 @@ export function useProductPhotoUpload(productId: string, currentImageCount: numb
 
   return { uploadFiles, isUploading, error, setError }
 }
+
+

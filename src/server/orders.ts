@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
@@ -219,4 +219,6 @@ export const cancelMyOrder = createServerFn({ method: 'POST' })
 
     return { ok: true }
   })
+
+
 

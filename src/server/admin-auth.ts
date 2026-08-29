@@ -1,9 +1,9 @@
 import { createServerFn, createMiddleware } from '@tanstack/react-start'
 import { z } from 'zod'
 import { getRequest, getRequestHeader } from '@tanstack/react-start/server'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { hashPassword, verifyPassword } from '~/lib/crypto'
-import { issueSession, revokeCurrentSession, adminAuthMiddleware } from '~/lib/auth'
+import { issueSession, revokeCurrentSession, adminAuthMiddleware, getOptionalAdminSession } from '~/lib/auth'
 import { authRateLimit, readRateLimit } from '~/lib/rate-limit'
 
 interface AdminRow {
@@ -92,4 +92,11 @@ export const getCurrentAdmin = createServerFn({ method: 'GET' })
     `
     return rows[0] ?? null
   })
+
+
+
+export const getOptionalAdminSessionFn = createServerFn({ method: 'GET' }).handler(async () => {
+  return getOptionalAdminSession()
+})
+
 

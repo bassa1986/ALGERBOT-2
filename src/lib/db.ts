@@ -37,7 +37,7 @@ export function getDb(): postgres.Sql {
   return _sql
 }
 
-// Convenience export for call sites: `import { sql } from '~/lib/db.server'`
+// Convenience export for call sites: `import { sql } from '~/lib/db'`
 // then `await sql\`select 1\``. Implemented as a Proxy so the underlying
 // connection is only created on first actual use, keeping process.env reads
 // inside a function call rather than at module load time.
@@ -62,4 +62,5 @@ export async function closeDb(): Promise<void> {
 }
 
 // redeploy trigger 2026-08-29T14:28:12.1126753+01:00
+
 

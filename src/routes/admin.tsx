@@ -1,6 +1,5 @@
 import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { getOptionalAdminSession } from '~/lib/auth'
+import { getOptionalAdminSessionFn } from '~/server/admin-auth'
 import { LocaleProvider } from '~/lib/i18n/LocaleContext'
 
 // This is a real path-segment layout (not pathless), so every child route
@@ -8,10 +7,10 @@ import { LocaleProvider } from '~/lib/i18n/LocaleContext'
 // protected by this beforeLoad — EXCEPT /admin/login, which opts itself out
 // below since a login page must not require being already logged in.
 
-const checkAdminSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await getOptionalAdminSession()
+async function checkAdminSession() {
+  const session = await getOptionalAdminSessionFn()
   return { isAuthenticated: session !== null }
-})
+}
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async ({ location }) => {
@@ -33,3 +32,6 @@ export const Route = createFileRoute('/admin')({
     </LocaleProvider>
   ),
 })
+
+
+

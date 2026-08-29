@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useServerFn, createServerFn } from '@tanstack/react-start'
 import { loginAsAdmin } from '~/server/admin-auth'
-import { getOptionalAdminSession } from '~/lib/auth'
+import { getOptionalAdminSessionFn } from '~/server/admin-auth'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { LanguageSwitch } from '~/components/storefront/LanguageSwitch'
 
@@ -13,10 +13,10 @@ function sanitizeRedirect(url: unknown): string {
   return url
 }
 
-const checkSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await getOptionalAdminSession()
+async function checkSession() {
+  const session = await getOptionalAdminSessionFn()
   return { isAuthenticated: session !== null }
-})
+}
 
 export const Route = createFileRoute('/admin/login')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -109,3 +109,6 @@ function AdminLoginPage() {
     </div>
   )
 }
+
+
+

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { getRequestHeader } from '@tanstack/react-start/server'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { verifyLoginWidgetPayload, verifyWebAppInitData } from '~/lib/telegram'
 import { issueSession, revokeCurrentSession, merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
 import { authRateLimit, readRateLimit } from '~/lib/rate-limit'
@@ -158,5 +158,7 @@ export const getCurrentMerchant = createServerFn({ method: 'GET' })
 export const getOptionalSession = createServerFn({ method: 'GET' }).handler(async () => {
   return getOptionalMerchantSession()
 })
+
+
 
 

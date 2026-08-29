@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { publicRateLimit } from '~/lib/rate-limit'
 
 export interface CategoryRow {
@@ -16,4 +16,5 @@ export const listCategories = createServerFn({ method: 'GET' })
       SELECT id, slug, name_ar, name_fr FROM categories ORDER BY sort_order ASC
     `
   })
+
 

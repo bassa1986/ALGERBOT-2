@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { publicRateLimit } from '~/lib/rate-limit'
 
 export interface WilayaRow {
@@ -15,4 +15,5 @@ export const getWilayas = createServerFn({ method: 'GET' })
   .handler(async (): Promise<WilayaRow[]> => {
     return sql<WilayaRow[]>`SELECT code, name_ar, name_fr FROM wilayas ORDER BY code`
   })
+
 

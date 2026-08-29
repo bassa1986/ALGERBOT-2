@@ -280,3 +280,5 @@ function NewProductPage() {
     </div>
   )
 }
+
+

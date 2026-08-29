@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db.server'
+import { sql } from '~/lib/db'
 import { adminAuthMiddleware } from '~/lib/auth'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
@@ -286,4 +286,6 @@ export const getMarketplaceStats = createServerFn({ method: 'GET' })
       pendingBillingProofs: parseInt(billingCount[0].count, 10),
     }
   })
+
+
 
