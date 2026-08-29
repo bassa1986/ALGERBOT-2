@@ -2,9 +2,12 @@
 import { readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 import server from "../dist/server/server.js";
 
-const __dirname = import.meta.dirname;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const port = process.env.PORT || 3000;
 const host = "0.0.0.0";
 
@@ -22,7 +25,7 @@ const MIME_TYPES = {
 async function serveStatic(req, res) {
   if (!req.url.startsWith("/assets/")) return false;
 
-  const filePath = join(__dirname, "dist/client", req.url);
+  const filePath = join(process.cwd(), "dist/client", req.url);
   try {
     const content = readFileSync(filePath);
     const ext = extname(filePath);
@@ -31,7 +34,8 @@ async function serveStatic(req, res) {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.end(content);
     return true;
-  } catch {
+  } catch (err) {
+    console.error(`Failed to serve ${filePath}:`, err.message);
     return false;
   }
 }
