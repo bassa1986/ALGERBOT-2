@@ -2,8 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { loginWithTelegramWidget } from '~/server/auth'
-import { getOptionalMerchantSession } from '~/lib/auth'
+import { loginWithTelegramWidget, getOptionalSession } from '~/server/auth'
 import { createServerFn } from '@tanstack/react-start'
 
 // Validate the redirect target to prevent open-redirect: only relative
@@ -16,7 +15,7 @@ function sanitizeRedirect(url: unknown): string {
 }
 
 const checkSession = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await getOptionalMerchantSession()
+  const session = await getOptionalSession()
   return { isAuthenticated: session !== null }
 })
 
@@ -116,3 +115,4 @@ function LoginPage() {
     </div>
   )
 }
+

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getRequestHeader } from '@tanstack/react-start/server'
 import { sql } from '~/lib/db'
 import { verifyLoginWidgetPayload, verifyWebAppInitData } from '~/lib/telegram'
-import { issueSession, revokeCurrentSession, merchantAuthMiddleware } from '~/lib/auth'
+import { issueSession, revokeCurrentSession, merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
 import { authRateLimit, readRateLimit } from '~/lib/rate-limit'
 
 interface MerchantRow {
@@ -154,3 +154,8 @@ export const getCurrentMerchant = createServerFn({ method: 'GET' })
     `
     return rows[0] ?? null
   })
+
+export const getOptionalSession = createServerFn({ method: 'GET' }).handler(async () => {
+  return getOptionalMerchantSession()
+})
+
