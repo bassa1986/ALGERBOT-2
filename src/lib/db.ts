@@ -60,3 +60,5 @@ export async function closeDb(): Promise<void> {
     _sql = null
   }
 }
+
+// redeploy trigger 2026-08-29T14:28:12.1126753+01:00
