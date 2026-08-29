@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { mutationRateLimit } from '~/lib/rate-limit'
@@ -127,3 +127,4 @@ export const exportMyInventory = createServerFn({ method: 'POST' })
     const base64 = buildXlsxBase64(headers, dataRows, 'Inventaire')
     return { base64, filename: `algerbot-inventaire-${new Date().toISOString().slice(0, 10)}.xlsx` }
   })
+

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import * as XLSX from 'xlsx'
 import { merchantAuthMiddleware } from '~/lib/auth'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { readRateLimit } from '~/lib/rate-limit'
 
 // Column order and headers are the single source of truth for both the
@@ -61,3 +61,4 @@ export const downloadProductImportTemplate = createServerFn({ method: 'GET' })
     const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' })
     return { base64, filename: 'algerbot-modele-import-produits.xlsx' }
   })
+

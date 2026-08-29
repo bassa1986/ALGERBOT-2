@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
@@ -305,3 +305,4 @@ export const deleteMyVariant = createServerFn({ method: 'POST' })
     await sql`DELETE FROM product_variants WHERE id = ${data.variantId}`
     return { ok: true }
   })
+

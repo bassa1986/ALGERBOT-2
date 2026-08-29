@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { fetchObjectBytes, putObjectBytes, deleteObject } from '~/lib/storage'
 import { removeBackgroundToWhite, BackgroundRemovalUnavailableError } from '~/lib/rembg'
@@ -196,3 +196,4 @@ export const deleteProductImage = createServerFn({ method: 'POST' })
     }
     return { ok: true }
   })
+

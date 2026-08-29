@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import type { StoreLayoutVariant } from '~/server/store'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { publicRateLimit } from '~/lib/rate-limit'
@@ -265,3 +265,4 @@ export const listStoreCategoriesInUse = createServerFn({ method: 'GET' })
       ORDER BY c.slug
     `
   })
+

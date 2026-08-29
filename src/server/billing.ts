@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware, adminAuthMiddleware } from '~/lib/auth'
 import { presignPrivateProofUpload, presignPrivateGet, StorageValidationError } from '~/lib/storage'
 import { mutationRateLimit, readRateLimit, uploadRateLimit } from '~/lib/rate-limit'
@@ -225,3 +225,4 @@ export const rejectBillingProof = createServerFn({ method: 'POST' })
     `
     return { ok: true }
   })
+

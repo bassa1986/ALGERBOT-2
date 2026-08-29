@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
@@ -121,3 +121,4 @@ export const listVariantMovements = createServerFn({ method: 'GET' })
       LIMIT 100
     `
   })
+

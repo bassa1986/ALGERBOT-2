@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { mutationRateLimit } from '~/lib/rate-limit'
 
@@ -232,3 +232,4 @@ export const confirmProductImport = createServerFn({ method: 'POST' })
 
     return { ok: true as const, errors, upsertedProducts, upsertedVariants }
   })
+

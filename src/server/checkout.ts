@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { sql } from '~/lib/db'
+import { sql } from '~/lib/db.server'
 import { notifyMerchantOfNewOrder } from '~/lib/telegram-notify'
 import { publicRateLimit } from '~/lib/rate-limit'
 
@@ -258,3 +258,4 @@ export const lookupOrder = createServerFn({ method: 'POST' })
 
     return { ...order, items, events }
   })
+
