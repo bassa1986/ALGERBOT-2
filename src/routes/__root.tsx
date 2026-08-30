@@ -47,6 +47,17 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ar" dir="rtl">
       <head>
+        <script
+          type="importmap"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              imports: {
+                postgres: 'data:text/javascript,export default {};',
+                '@tanstack/react-start/server': 'data:text/javascript,export default {};',
+              },
+            }),
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -56,3 +67,4 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     </html>
   )
 }
+
