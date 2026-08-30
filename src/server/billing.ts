@@ -228,3 +228,22 @@ export const rejectBillingProof = createServerFn({ method: 'POST' })
 
 
 
+
+// ---------- Public: pricing info for the homepage/pricing page ----------
+export interface PublicPricingInfo {
+  monthlyPriceCentimes: number
+  freeTrialDays: number
+}
+
+export const getPublicPricingInfo = createServerFn({ method: 'GET' })
+  .middleware([readRateLimit])
+  .handler(async (): Promise<PublicPricingInfo> => {
+    const rows = await sql<{ monthlyPriceCentimes: number; freeTrialDays: number }[]>`
+      SELECT monthly_price_centimes, free_trial_days FROM subscription_settings WHERE id = true
+    `
+    const row = rows[0]
+    return {
+      monthlyPriceCentimes: row?.monthlyPriceCentimes ?? 250000,
+      freeTrialDays: row?.freeTrialDays ?? 15,
+    }
+  })

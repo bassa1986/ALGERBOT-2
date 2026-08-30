@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+﻿import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import {
@@ -13,15 +13,20 @@ import { useScrollReveal } from '~/lib/useScrollReveal'
 import { LocaleProvider, useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
 import { LanguageSwitch } from '~/components/storefront/LanguageSwitch'
+import { SiteNav } from '~/components/storefront/SiteNav'
+import { SiteFooter } from '~/components/storefront/SiteFooter'
+import { PricingSection } from '~/components/storefront/PricingSection'
+import { getPublicPricingInfo } from '~/server/billing'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const [stores, products, categories] = await Promise.all([
+    const [stores, products, categories, pricing] = await Promise.all([
       listMarketplaceStores(),
       searchMarketplaceProducts({ data: {} }),
       listMarketplaceCategoriesInUse(),
+      getPublicPricingInfo(),
     ])
-    return { stores, products, categories }
+    return { stores, products, categories, pricing }
   },
   component: () => (
     <LocaleProvider>
@@ -31,7 +36,7 @@ export const Route = createFileRoute('/')({
 })
 
 function MarketplaceHome() {
-  const { stores, categories, products: initialProducts } = Route.useLoaderData()
+  const { stores, categories, products: initialProducts, pricing } = Route.useLoaderData()
   const search = useServerFn(searchMarketplaceProducts)
   const { locale, t, dir } = useLocale()
 
@@ -71,6 +76,7 @@ function MarketplaceHome() {
           <LanguageSwitch />
         </div>
       </header>
+      <SiteNav />
 
       <div className="px-4 mb-3">
         <input
@@ -172,9 +178,10 @@ function MarketplaceHome() {
         <Link to="/order-lookup" className="text-sm text-[var(--color-text-muted)] underline">
           {t.trackOrder}
         </Link>
-      </div>
-    </div>
-  )
-}
-
+        </div>
+        <PricingSection pricing={pricing} />
+        <SiteFooter />
+        </div>
+        )
+        }
 

@@ -1,4 +1,4 @@
-export type Locale = 'ar' | 'fr'
+﻿export type Locale = 'ar' | 'fr'
 
 export const LOCALE_DIR: Record<Locale, 'rtl' | 'ltr'> = {
   ar: 'rtl',
@@ -24,6 +24,27 @@ export interface TranslationDictionary {
   noProductsFound: string
   trackOrder: string
   home: string
+  navLogin: string
+  navPricing: string
+  navPrivacy: string
+  navContact: string
+  pricingTitle: string
+  pricingTrialBadge: string
+  pricingPrice: string
+  pricingPricePeriod: string
+  pricingFeature1: string
+  pricingFeature2: string
+  pricingFeature3: string
+  pricingFeature4: string
+  pricingCta: string
+  footerPrivacy: string
+  footerContact: string
+  footerRights: string
+  privacyTitle: string
+  privacyBody: string
+  contactTitle: string
+  contactBody: string
+  contactEmailLabel: string
   backToShopping: string
   cart: string
   cartEmpty: string
@@ -292,6 +313,27 @@ export const translations: Record<Locale, TranslationDictionary> = {
     noProductsFound: 'لم يتم العثور على أي منتج.',
     trackOrder: 'تتبع طلبيتي',
     home: 'الرئيسية',
+    navLogin: 'دخول التجار',
+    navPricing: 'الأسعار',
+    navPrivacy: 'الخصوصية',
+    navContact: 'اتصل بنا',
+    pricingTitle: 'اشترك في AlgerBot',
+    pricingTrialBadge: '🎉 15 يوم مجانًا',
+    pricingPrice: '2,500 دج',
+    pricingPricePeriod: 'شهريًا بعد الفترة التجريبية',
+    pricingFeature1: '✅ منتجات غير محدودة',
+    pricingFeature2: '🚀 متجر عبر بوت تيليجرام',
+    pricingFeature3: '📦 تتبع الطلبات ولوحة تحكم كاملة',
+    pricingFeature4: '🎁 بدون التزام، ألغِ في أي وقت',
+    pricingCta: 'ابدأ الآن مجانًا',
+    footerPrivacy: 'سياسة الخصوصية',
+    footerContact: 'اتصل بنا',
+    footerRights: 'جميع الحقوق محفوظة',
+    privacyTitle: 'سياسة الخصوصية',
+    privacyBody: 'نحن في AlgerBot نلتزم بحماية خصوصيتك. نقوم بجمع فقط المعلومات الضرورية لتشغيل متجرك، مثل بيانات المنتجات والطلبات ومعلومات حسابك على تيليجرام. لا نقوم ببيع بياناتك لأي طرف ثالث. لأي استفسار حول بياناتك، يمكنكم التواصل معنا عبر البريد الإلكتروني.',
+    contactTitle: 'اتصل بنا',
+    contactBody: 'لأي سؤال أو مساعدة، لا تترددوا في مراسلتنا عبر البريد الإلكتروني وسنرد عليكم في أقرب وقت ممكن.',
+    contactEmailLabel: 'البريد الإلكتروني',
     backToShopping: 'متابعة التسوق',
     cart: 'السلة',
     cartEmpty: 'سلتك فارغة.',
@@ -537,6 +579,27 @@ export const translations: Record<Locale, TranslationDictionary> = {
     noProductsFound: 'Aucun produit trouvé.',
     trackOrder: 'Suivre une commande',
     home: 'Accueil',
+    navLogin: 'Connexion marchands',
+    navPricing: 'Tarifs',
+    navPrivacy: 'Confidentialité',
+    navContact: 'Contact',
+    pricingTitle: "S'abonner à AlgerBot",
+    pricingTrialBadge: '🎉 15 jours gratuits',
+    pricingPrice: '2 500 DZD',
+    pricingPricePeriod: "par mois après la période d'essai",
+    pricingFeature1: '✅ Produits illimités',
+    pricingFeature2: '🚀 Boutique via bot Telegram',
+    pricingFeature3: '📦 Suivi des commandes et tableau de bord complet',
+    pricingFeature4: '🎁 Sans engagement, annulez à tout moment',
+    pricingCta: 'Commencer gratuitement',
+    footerPrivacy: 'Politique de confidentialité',
+    footerContact: 'Nous contacter',
+    footerRights: 'Tous droits réservés',
+    privacyTitle: 'Politique de confidentialité',
+    privacyBody: "Chez AlgerBot, nous nous engageons à protéger votre vie privée. Nous ne collectons que les informations nécessaires au fonctionnement de votre boutique, telles que les données produits, commandes et votre profil Telegram. Nous ne vendons jamais vos données à des tiers. Pour toute question concernant vos données, contactez-nous par e-mail.",
+    contactTitle: 'Nous contacter',
+    contactBody: "Pour toute question ou assistance, n'hésitez pas à nous écrire par e-mail, nous vous répondrons dans les meilleurs délais.",
+    contactEmailLabel: 'E-mail',
     backToShopping: 'Continuer les achats',
     cart: 'Panier',
     cartEmpty: 'Votre panier est vide.',
@@ -776,3 +839,5 @@ export const translations: Record<Locale, TranslationDictionary> = {
 }
 
 export type TranslationKey = keyof TranslationDictionary
+
+
