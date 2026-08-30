@@ -1,5 +1,4 @@
 import postgres from 'postgres'
-
 // Single pooled connection for the whole app. Never instantiate `postgres()`
 // anywhere else. process.env is read lazily inside a function (not at module
 // scope) so this file can be imported safely before env vars are injected by
@@ -16,27 +15,21 @@ import postgres from 'postgres'
 // in the client's static analysis (getDb/sql are simply never called
 // client-side) without either the Node built-ins or the driver's code
 // actually ending up in the shipped client bundle.
-
 let _sql: postgres.Sql | null = null
-
 export function getDb(): postgres.Sql {
   if (_sql) return _sql
-
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set')
   }
-
   _sql = postgres(connectionString, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,
     transform: postgres.camel, // rows come back as camelCase in JS
   })
-
   return _sql
 }
-
 // Convenience export for call sites: `import { sql } from '~/lib/db'`
 // then `await sql\`select 1\``. Implemented as a Proxy so the underlying
 // connection is only created on first actual use, keeping process.env reads
@@ -53,14 +46,9 @@ export const sql: postgres.Sql = new Proxy((() => {}) as unknown as postgres.Sql
     return typeof value === 'function' ? value.bind(db) : value
   },
 })
-
 export async function closeDb(): Promise<void> {
   if (_sql) {
     await _sql.end({ timeout: 5 })
     _sql = null
   }
 }
-
-// redeploy trigger 2026-08-29T14:28:12.1126753+01:00
-
-
