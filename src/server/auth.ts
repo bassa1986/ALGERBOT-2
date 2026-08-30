@@ -164,5 +164,6 @@ export const getOptionalSession = createServerFn({ method: 'GET' }).handler(asyn
 
 
 export const getTelegramBotUsername = createServerFn({ method: 'GET' }).handler(async () => {
-  return { botUsername: process.env.TELEGRAM_BOT_USERNAME ?? null }
+  return { botUsername: process.env.TELEGRAM_BOT_USERNAME?.trim() || null }
 })
+
