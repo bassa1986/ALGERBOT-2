@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { loginWithTelegramWidget, getOptionalSession } from '~/server/auth'
+import { loginWithTelegramWidget, getOptionalSession, getTelegramBotUsername } from '~/server/auth'
 import { createServerFn } from '@tanstack/react-start'
 
 // Validate the redirect target to prevent open-redirect: only relative
@@ -28,6 +28,15 @@ export const Route = createFileRoute('/login')({
     if (isAuthenticated) {
       throw redirect({ to: search.redirect })
     }
+  },
+  // TELEGRAM_BOT_USERNAME is read here, server-side, at REQUEST time (not
+  // Vite's import.meta.env, which is baked in at BUILD time and was empty
+  // in production because PivoCloud injects env vars into the running
+  // container, not into the Docker build step — so the widget-injection
+  // code below was being silently dead-code-eliminated by the minifier).
+  loader: async () => {
+    const { botUsername } = await getTelegramBotUsername()
+    return { botUsername }
   },
   component: LoginPage,
 })
@@ -60,19 +69,12 @@ const telegramPayloadSchema = z.object({
 
 function LoginPage() {
   const search = Route.useSearch()
+  const { botUsername } = Route.useLoaderData()
   const navigate = useNavigate()
   const widgetContainerRef = useRef<HTMLDivElement>(null)
   const login = useServerFn(loginWithTelegramWidget)
 
   useEffect(() => {
-    // TELEGRAM_BOT_USERNAME is a public, non-secret value (it's the bot's
-    // @handle) so it's safe to bake into a static script tag attribute.
-    // It's injected via a data attribute rendered server-side by the route
-    // loader in a full implementation; for now read from an env exposed at
-    // build time via Vite's import.meta.env if configured, else fall back
-    // to a placeholder that must be replaced per-deployment.
-    const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined
-
     window.onTelegramAuth = async (user: TelegramAuthPayload) => {
       const parsed = telegramPayloadSchema.parse(user)
       try {
@@ -99,7 +101,7 @@ function LoginPage() {
     return () => {
       delete window.onTelegramAuth
     }
-  }, [login, navigate, search.redirect])
+  }, [login, navigate, search.redirect, botUsername])
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-muted)] flex items-center justify-center p-4">
@@ -111,10 +113,12 @@ function LoginPage() {
           Connectez-vous avec votre compte Telegram pour gérer votre boutique.
         </p>
         <div ref={widgetContainerRef} className="flex justify-center" />
+        {!botUsername && (
+          <p className="text-xs text-[var(--color-danger)] mt-4">
+            Configuration manquante : TELEGRAM_BOT_USERNAME
+          </p>
+        )}
       </div>
     </div>
   )
 }
-
-
-
