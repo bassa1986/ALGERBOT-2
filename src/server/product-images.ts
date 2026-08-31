@@ -4,6 +4,8 @@ import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { fetchObjectBytes, putObjectBytes, deleteObject } from '~/lib/storage'
 import { removeBackgroundToWhite, BackgroundRemovalUnavailableError } from '~/lib/rembg'
+import { optimizeProductImage } from '~/lib/image-optimizer'
+import { assertWithinQuota, adjustStorageUsage } from '~/lib/quota'
 import { mutationRateLimit } from '~/lib/rate-limit'
 
 const MAX_IMAGES_PER_PRODUCT = 6
@@ -69,6 +71,20 @@ export const confirmProductImageUpload = createServerFn({ method: 'POST' })
     // write is already correct either way.
     await tryRemoveBackground(data.storageKey)
 
+    // --- Image optimization + storage quota (added) ---
+    // Fetches the (possibly background-removed) bytes back, downscales to
+    // a max 1200px side, converts to WebP, and compresses to ~150-250KB —
+    // then checks the storage quota against the REAL final optimized size
+    // (not the raw upload size) before persisting, and overwrites the
+    // same storage key so no URL/row shape changes. Runs on the existing
+    // 5,000 DZD app server, no dedicated image-processing server needed.
+    const rawBytes = await fetchObjectBytes(data.storageKey)
+    const { bytes: optimizedBytes, byteSize } = await optimizeProductImage(rawBytes)
+    await assertWithinQuota(context.merchantId, { additionalBytes: byteSize })
+    await putObjectBytes(data.storageKey, optimizedBytes, 'image/webp')
+    await adjustStorageUsage(context.merchantId, byteSize)
+    // --- end addition ---
+
     return sql.begin(async (tx) => {
       const countRows = await tx<{ count: string }[]>`
         SELECT COUNT(*) AS count FROM product_images WHERE product_id = ${data.productId}
@@ -80,8 +96,8 @@ export const confirmProductImageUpload = createServerFn({ method: 'POST' })
 
       const isFirstImage = currentCount === 0
       const rows = await tx<{ id: string }[]>`
-        INSERT INTO product_images (product_id, storage_key, url, sort_order, is_cover)
-        VALUES (${data.productId}, ${data.storageKey}, ${data.url}, ${currentCount}, ${isFirstImage})
+        INSERT INTO product_images (product_id, storage_key, url, sort_order, is_cover, size_bytes)
+        VALUES (${data.productId}, ${data.storageKey}, ${data.url}, ${currentCount}, ${isFirstImage}, ${byteSize})
         RETURNING id
       `
       return { id: rows[0].id }
@@ -157,11 +173,11 @@ export const deleteProductImage = createServerFn({ method: 'POST' })
   .handler(async ({ context, data }) => {
     await assertProductOwnership(data.productId, context.merchantId)
 
-    const deletedStorageKey = await sql.begin(async (tx) => {
-      const deletedRows = await tx<{ isCover: boolean; storageKey: string }[]>`
+    const deletedImage = await sql.begin(async (tx) => {
+      const deletedRows = await tx<{ isCover: boolean; storageKey: string; sizeBytes: number }[]>`
         DELETE FROM product_images
         WHERE id = ${data.imageId} AND product_id = ${data.productId}
-        RETURNING is_cover, storage_key
+        RETURNING is_cover, storage_key, size_bytes
       `
       if (deletedRows.length === 0) throw new Error('Image introuvable')
 
@@ -179,8 +195,15 @@ export const deleteProductImage = createServerFn({ method: 'POST' })
         }
       }
 
-      return deletedRows[0].storageKey
+      return { storageKey: deletedRows[0].storageKey, sizeBytes: deletedRows[0].sizeBytes }
     })
+    const deletedStorageKey = deletedImage.storageKey
+
+    // Frees up the merchant's storage quota immediately, regardless of
+    // whether the Adex delete below succeeds — the DB row (and the byte
+    // count it represented) is already gone, so the quota should reflect
+    // that right away rather than waiting on an external HTTP call.
+    await adjustStorageUsage(context.merchantId, -deletedImage.sizeBytes)
 
     // Deleting the Adex object happens AFTER the DB transaction commits,
     // and deliberately doesn't roll back the deletion if this fails — the

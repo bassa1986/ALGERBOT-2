@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
+import { assertWithinQuota } from '~/lib/quota'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
 // Every handler here re-derives the store id from the session-owned
@@ -142,6 +143,12 @@ export const createMyProduct = createServerFn({ method: 'POST' })
   .middleware([merchantAuthMiddleware, mutationRateLimit])
   .validator(productInputSchema)
   .handler(async ({ context, data }) => {
+    // Enforces subscription/trial validity and the plan's max-product cap
+    // BEFORE the SKU-uniqueness check or any write, so a merchant past
+    // their limit gets a clear quota error rather than an unrelated
+    // partial-progress state.
+    await assertWithinQuota(context.merchantId, { isNewProduct: true })
+
     const storeId = await getOwnedStoreId(context.merchantId)
 
     const existingSku = await sql<{ id: string }[]>`
