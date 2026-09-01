@@ -246,6 +246,7 @@ export interface AdminDictionary {
   merchants: string
   ordersLabel: string
   billing: string
+  plansLabel: string
   categories: string
   settingsLabel: string
   logout: string
@@ -516,6 +517,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       merchants: 'التجار',
       ordersLabel: 'الطلبات',
       billing: 'الفوترة',
+      plansLabel: 'الخطط',
       categories: 'الفئات',
       settingsLabel: 'الإعدادات',
       logout: 'تسجيل الخروج',
@@ -783,6 +785,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
       merchants: 'Marchands',
       ordersLabel: 'Commandes',
       billing: 'Facturation',
+      plansLabel: 'Forfaits',
       categories: 'Catégories',
       settingsLabel: 'Paramètres',
       logout: 'Déconnexion',

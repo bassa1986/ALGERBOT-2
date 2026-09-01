@@ -61,6 +61,7 @@ function AdminHome() {
         <AdminNavCard to="/admin/merchants" label={a.merchants} />
         <AdminNavCard to="/admin/orders" label={a.ordersLabel} />
         <AdminNavCard to="/admin/billing" label={a.billing} />
+        <AdminNavCard to="/admin/plans" label={a.plansLabel} />
         <AdminNavCard to="/admin/categories" label={a.categories} />
         <AdminNavCard to="/admin/settings" label={a.settingsLabel} />
       </div>

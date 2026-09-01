@@ -16,17 +16,17 @@ import { LanguageSwitch } from '~/components/storefront/LanguageSwitch'
 import { SiteNav } from '~/components/storefront/SiteNav'
 import { SiteFooter } from '~/components/storefront/SiteFooter'
 import { PricingSection } from '~/components/storefront/PricingSection'
-import { getPublicPricingInfo } from '~/server/billing'
+import { listActivePlans } from '~/lib/plans'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const [stores, products, categories, pricing] = await Promise.all([
+    const [stores, products, categories, plans] = await Promise.all([
       listMarketplaceStores(),
       searchMarketplaceProducts({ data: {} }),
       listMarketplaceCategoriesInUse(),
-      getPublicPricingInfo(),
+      listActivePlans(),
     ])
-    return { stores, products, categories, pricing }
+    return { stores, products, categories, plans }
   },
   component: () => (
     <LocaleProvider>
@@ -36,7 +36,7 @@ export const Route = createFileRoute('/')({
 })
 
 function MarketplaceHome() {
-  const { stores, categories, products: initialProducts, pricing } = Route.useLoaderData()
+  const { stores, categories, products: initialProducts, plans } = Route.useLoaderData()
   const search = useServerFn(searchMarketplaceProducts)
   const { locale, t, dir } = useLocale()
 
@@ -179,7 +179,7 @@ function MarketplaceHome() {
           {t.trackOrder}
         </Link>
         </div>
-        <PricingSection pricing={pricing} />
+        <PricingSection plans={plans} />
         <SiteFooter />
         </div>
         )

@@ -15,6 +15,7 @@ export interface PlanLimits {
   maxImagesPerProduct: number
   storageLimitBytes: number | null // null = no storage check (Starter, Advanced)
   trialDays: number
+  isActive?: boolean // present on admin queries only; absent on the public-facing lookups
 }
 
 /**
@@ -42,5 +43,16 @@ export async function listActivePlans(): Promise<PlanLimits[]> {
            max_products AS "maxProducts", max_images_per_product AS "maxImagesPerProduct",
            storage_limit_bytes AS "storageLimitBytes", trial_days AS "trialDays"
     FROM plans WHERE is_active = true ORDER BY sort_order ASC
+  `
+}
+
+/** Admin list — every plan regardless of is_active, for the management UI. */
+export async function listAllPlans(): Promise<PlanLimits[]> {
+  return sql<PlanLimits[]>`
+    SELECT id, name, monthly_price_centimes AS "monthlyPriceCentimes",
+           max_products AS "maxProducts", max_images_per_product AS "maxImagesPerProduct",
+           storage_limit_bytes AS "storageLimitBytes", trial_days AS "trialDays",
+           is_active AS "isActive"
+    FROM plans ORDER BY sort_order ASC
   `
 }

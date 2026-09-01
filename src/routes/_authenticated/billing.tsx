@@ -9,6 +9,8 @@ import {
   listMyBillingProofs,
   type BillingProofRow,
 } from '~/server/billing'
+import { getMyPlan, requestPlanChange, type MyPlanInfo } from '~/server/plan-requests'
+import { listActivePlans, type PlanLimits } from '~/lib/plans'
 import { uploadToPresignedUrl } from '~/lib/upload'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd, formatDate } from '~/lib/i18n/format'
@@ -16,18 +18,20 @@ import type { MerchantDictionary } from '~/lib/i18n/translations'
 
 export const Route = createFileRoute('/_authenticated/billing')({
   loader: async () => {
-    const [status, paymentInfo, proofs] = await Promise.all([
+    const [status, paymentInfo, proofs, myPlan, allPlans] = await Promise.all([
       getMySubscriptionStatus(),
       getBaridiMobPaymentInfo(),
       listMyBillingProofs(),
+      getMyPlan(),
+      listActivePlans(),
     ])
-    return { status, paymentInfo, proofs }
+    return { status, paymentInfo, proofs, myPlan, allPlans }
   },
   component: BillingPage,
 })
 
 function BillingPage() {
-  const { status, paymentInfo, proofs } = Route.useLoaderData()
+  const { status, paymentInfo, proofs, myPlan, allPlans } = Route.useLoaderData()
   const router = useRouter()
   const { locale, t, dir } = useLocale()
   const m = t.merchant
@@ -58,6 +62,13 @@ function BillingPage() {
           {m.monthlyPrice} : {formatDzd(status.monthlyPriceCentimes, locale)}
         </p>
       </section>
+
+      <PlanSection
+        myPlan={myPlan}
+        allPlans={allPlans}
+        locale={locale}
+        onRequested={() => router.invalidate({ sync: true })}
+      />
 
       <BaridiMobSection rib={paymentInfo.rib} accountName={paymentInfo.accountName} m={m} />
 
@@ -261,6 +272,105 @@ function SubmitProofSection({
           {isSubmitting ? m.submitting : m.submit}
         </button>
       </form>
+    </section>
+  )
+}
+
+function PlanSection({
+  myPlan,
+  allPlans,
+  locale,
+  onRequested,
+}: {
+  myPlan: MyPlanInfo
+  allPlans: PlanLimits[]
+  locale: 'ar' | 'fr'
+  onRequested: () => void
+}) {
+  const request = useServerFn(requestPlanChange)
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  const L = locale === 'ar'
+    ? {
+        title: 'الخطة الحالية',
+        products: (n: number | null) => (n === null ? 'منتجات غير محدودة' : `حتى ${n} منتج`),
+        pendingNotice: (name: string) => `طلب التحويل إلى "${name}" قيد المراجعة من الإدارة.`,
+        changePlan: 'تغيير الخطة',
+        choosePlaceholder: 'اختر خطة',
+        requestBtn: 'إرسال طلب التغيير',
+        submitted: 'تم إرسال الطلب، سيتم مراجعته من طرف الإدارة.',
+      }
+    : {
+        title: 'Forfait actuel',
+        products: (n: number | null) => (n === null ? 'Produits illimités' : `Jusqu'à ${n} produits`),
+        pendingNotice: (name: string) => `Une demande de passage vers "${name}" est en cours de révision.`,
+        changePlan: 'Changer de forfait',
+        choosePlaceholder: 'Choisir un forfait',
+        requestBtn: 'Envoyer la demande',
+        submitted: 'Demande envoyée, elle sera examinée par un administrateur.',
+      }
+
+  const otherPlans = allPlans.filter((p) => p.id !== myPlan.planId)
+
+  async function handleRequest() {
+    if (!selectedPlanId) return
+    setError(null)
+    setIsSubmitting(true)
+    try {
+      await request({ data: { requestedPlanId: selectedPlanId } })
+      setSuccess(true)
+      setSelectedPlanId(null)
+      onRequested()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="rounded-2xl bg-[var(--color-surface)] p-5 shadow-sm">
+      <h2 className="font-semibold text-[var(--color-text-primary)] mb-1">{L.title}</h2>
+      <p className="text-lg font-bold text-[var(--color-action-primary)]">{myPlan.planName}</p>
+      <p className="text-sm text-[var(--color-text-muted)] mb-3">
+        {formatDzd(myPlan.monthlyPriceCentimes, locale)} · {L.products(myPlan.maxProducts)}
+      </p>
+
+      {myPlan.pendingRequest ? (
+        <p className="text-sm text-[var(--color-accent)] bg-[var(--color-accent)]/10 rounded-lg px-3 py-2">
+          {L.pendingNotice(myPlan.pendingRequest.requestedPlanName)}
+        </p>
+      ) : (
+        <div className="border-t border-[var(--color-border)] pt-3 mt-1">
+          <p className="text-sm font-medium text-[var(--color-text-primary)] mb-2">{L.changePlan}</p>
+          <div className="flex gap-2">
+            <select
+              value={selectedPlanId ?? ''}
+              onChange={(e) => setSelectedPlanId(e.target.value || null)}
+              className="flex-1 rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
+            >
+              <option value="">{L.choosePlaceholder}</option>
+              {otherPlans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {formatDzd(p.monthlyPriceCentimes, locale)}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleRequest}
+              disabled={!selectedPlanId || isSubmitting}
+              className="rounded-full bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 shrink-0"
+            >
+              {isSubmitting ? '...' : L.requestBtn}
+            </button>
+          </div>
+          {error && <p className="text-sm text-[var(--color-danger)] mt-2">{error}</p>}
+          {success && <p className="text-sm text-[var(--color-success)] mt-2">{L.submitted}</p>}
+        </div>
+      )}
     </section>
   )
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getPublicPricingInfo } from '~/server/billing'
+import { listActivePlans } from '~/lib/plans'
 import { LocaleProvider, useLocale } from '~/lib/i18n/LocaleContext'
 import { SiteNav } from '~/components/storefront/SiteNav'
 import { SiteFooter } from '~/components/storefront/SiteFooter'
@@ -7,8 +7,8 @@ import { PricingSection } from '~/components/storefront/PricingSection'
 
 export const Route = createFileRoute('/pricing')({
   loader: async () => {
-    const pricing = await getPublicPricingInfo()
-    return { pricing }
+    const plans = await listActivePlans()
+    return { plans }
   },
   component: () => (
     <LocaleProvider>
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/pricing')({
 })
 
 function PricingPage() {
-  const { pricing } = Route.useLoaderData()
+  const { plans } = Route.useLoaderData()
   const { t, dir } = useLocale()
   return (
     <div className="min-h-screen bg-[var(--color-surface-muted)]" dir={dir}>
@@ -26,7 +26,7 @@ function PricingPage() {
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
       </header>
       <SiteNav />
-      <PricingSection pricing={pricing} />
+      <PricingSection plans={plans} />
       <SiteFooter />
     </div>
   )

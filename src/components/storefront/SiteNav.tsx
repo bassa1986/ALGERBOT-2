@@ -12,7 +12,7 @@ export function SiteNav() {
       <Link to="/pricing" className={linkClass}>
         {t.navPricing}
       </Link>
-      <Link to="/login" className={linkClass}>
+      <Link to="/login" search={{ redirect: '/dashboard' }} className={linkClass}>
         {t.navLogin}
       </Link>
       <Link to="/order-lookup" className={linkClass}>
