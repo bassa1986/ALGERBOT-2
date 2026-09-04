@@ -22,6 +22,21 @@ function isAllowed(key: string, max: number, windowMs: number): boolean {
   return attempts.length <= max
 }
 
+/**
+ * Plain-function rate-limit check, for callers that aren't a
+ * createServerFn (which the middleware factory below is built for) — the
+ * WhatsApp Cloud API routes (src/routes/api/whatsapp/*.ts) are raw HTTP
+ * route handlers (`server.handlers.GET/POST`), a different TanStack Start
+ * mechanism with no middleware pipeline of its own, so they call this
+ * directly rather than going through createRateLimitMiddleware.
+ * `clientIp` must be extracted by the caller from its own Request object,
+ * since getClientIp() below relies on TanStack Start's function-context
+ * header helpers, which aren't available in a raw route handler.
+ */
+export function checkRateLimit(bucketName: string, clientIp: string, max: number, windowMs: number): boolean {
+  return isAllowed(`${bucketName}:${clientIp}`, max, windowMs)
+}
+
 const getClientIp = createServerOnlyFn((): string => {
   // x-forwarded-for can contain a comma-separated chain when the request
   // passed through multiple proxies; the first entry is the original

@@ -56,7 +56,7 @@ async function tryRemoveBackground(storageKey: string): Promise<void> {
  */
 const confirmImageSchema = z.object({
   productId: z.string().uuid(),
-  storageKey: z.string().min(1),
+  storageKey: z.string().min(1).max(300),
   url: z.string().url(),
 })
 

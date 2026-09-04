@@ -1,13 +1,20 @@
 import postgres from 'postgres';
 
-const sql = postgres({
-  host: process.env.PGHOST || 'localhost',
-  port: parseInt(process.env.PGPORT || '5432'),
-  database: process.env.PGDATABASE || 'pivodb',
-  username: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'postgres',
-  ssl: process.env.PGHOST ? 'require' : false,
-});
+const sql = process.env.DATABASE_URL
+  ? postgres(process.env.DATABASE_URL, {
+      ssl:
+        process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')
+          ? false
+          : 'require',
+    })
+  : postgres({
+      host: process.env.PGHOST || 'localhost',
+      port: parseInt(process.env.PGPORT || '5432'),
+      database: process.env.PGDATABASE || 'pivodb',
+      username: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || 'postgres',
+      ssl: process.env.PGHOST ? 'require' : false,
+    });
 
 async function cleanupTestData() {
   console.log('Finding test store...');

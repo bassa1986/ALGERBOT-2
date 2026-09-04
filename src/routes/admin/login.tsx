@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useServerFn, createServerFn } from '@tanstack/react-start'
 import { loginAsAdmin } from '~/server/admin-auth'
@@ -105,6 +105,13 @@ function AdminLoginPage() {
             ? (locale === 'ar' ? 'جارٍ الاتصال...' : 'Connexion...')
             : (locale === 'ar' ? 'تسجيل الدخول' : 'Se connecter')}
         </button>
+
+        <Link
+          to="/admin/forgot-password"
+          className="mt-3 block text-center text-sm text-[var(--color-text-muted)] underline"
+        >
+          {locale === 'ar' ? 'نسيت كلمة المرور؟' : 'Mot de passe oublié ?'}
+        </Link>
       </form>
     </div>
   )

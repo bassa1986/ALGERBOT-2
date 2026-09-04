@@ -85,3 +85,14 @@ export function buildShareableProductUrl(origin: string, productId: string): str
 export function buildShareableAppUrl(origin: string): string {
   return `${origin.replace(/\/$/, '')}/share/app`
 }
+
+/**
+ * A merchant's own personal Telegram contact link (https://t.me/<username>),
+ * NOT the AlgerBot Mini App link above. Used on the public shop page so
+ * buyers can message the merchant directly. telegram_username is optional
+ * on the merchants table, so callers should treat a null/empty username as
+ * "no button" rather than passing it here.
+ */
+export function buildMerchantTelegramLink(telegramUsername: string): string {
+  return `https://t.me/${telegramUsername.replace(/^@/, '')}`
+}

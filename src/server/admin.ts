@@ -185,7 +185,7 @@ export const updateCategory = createServerFn({ method: 'POST' })
   })
 
 export const deleteCategory = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware])
+  .middleware([adminAuthMiddleware, mutationRateLimit])
   .validator(z.object({ categoryId: z.string().uuid() }))
   .handler(async ({ data }) => {
     // products.category_id has no ON DELETE behavior specified in the

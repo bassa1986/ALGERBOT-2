@@ -32,7 +32,7 @@ function ShareAppLandingPage() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-muted)] flex items-center justify-center p-4" dir={dir}>
       <div className="w-full max-w-sm rounded-2xl bg-[var(--color-surface)] p-6 text-center shadow-sm">
-        <h1 className="mb-2 text-xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
+        <h1 className="app-title mb-2 text-xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
         <p className="mb-4 text-xs text-[var(--color-text-muted)]">{t.share.landingIntro}</p>
 
         <a

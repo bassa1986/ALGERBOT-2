@@ -38,6 +38,7 @@ export function ProductCard({
   const [isShareOpen, setIsShareOpen] = useState(false)
 
   const isOutOfStock = product.totalStock <= 0
+  const isNew = Date.now() - new Date(product.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000
 
   const shareTarget: ShareTarget = {
     telegramUrl: buildProductTelegramLink(product.id),
@@ -111,6 +112,20 @@ export function ProductCard({
             }`}
           >
             {isOutOfStock ? t.outOfStock : t.inStock}
+          </span>
+        )}
+
+        {/* Recency signal, consistent with the marketplace homepage's own
+            "new listing" badge — placed opposite the electronics stock
+            badge (which already occupies top-start on that variant) so
+            the two never collide. */}
+        {isNew && (
+          <span
+            className={`absolute top-2 rounded-full bg-[var(--color-saffron)] px-2 py-0.5 text-[10px] font-bold text-white ${
+              variant === 'electronics' ? 'end-2' : 'start-2'
+            }`}
+          >
+            {t.newListingBadge}
           </span>
         )}
 

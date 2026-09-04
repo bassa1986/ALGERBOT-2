@@ -104,7 +104,10 @@ async function main() {
     process.exit(1)
   }
 
-  const sql = postgres(connectionString, { max: 1 })
+  const sql = postgres(connectionString, {
+    max: 1,
+    ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1') ? false : 'require',
+  })
   try {
     if (direction === 'up') await up(sql)
     else await down(sql)

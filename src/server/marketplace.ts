@@ -36,11 +36,16 @@ export interface MarketplaceProductCard {
   coverImageUrl: string | null
   storeSlug: string
   storeName: string
+  communeNameAr: string | null
+  communeNameFr: string | null
+  createdAt: Date
 }
 
 const searchSchema = z.object({
   q: z.string().max(120).optional(),
-  categorySlug: z.string().optional(),
+  categorySlug: z.string().max(120).optional(),
+  wilayaCode: z.number().int().min(1).max(69).optional(),
+  communeCode: z.number().int().min(1).max(9999).optional(),
 })
 
 export const searchMarketplaceProducts = createServerFn({ method: 'GET' })
@@ -50,18 +55,32 @@ export const searchMarketplaceProducts = createServerFn({ method: 'GET' })
     const searchPattern = sanitizeSearchInput(data.q)
 
     const products = await sql<
-      { id: string; name: string; priceCentimes: number; storeSlug: string; storeName: string }[]
+      {
+        id: string
+        name: string
+        priceCentimes: number
+        storeSlug: string
+        storeName: string
+        communeNameAr: string | null
+        communeNameFr: string | null
+        createdAt: Date
+      }[]
     >`
-      SELECT p.id, p.name, p.price_centimes, s.slug AS store_slug, s.name AS store_name
+      SELECT
+        p.id, p.name, p.price_centimes, s.slug AS store_slug, s.name AS store_name,
+        cm.name_ar AS commune_name_ar, cm.name_fr AS commune_name_fr, p.created_at
       FROM products p
       JOIN stores s ON s.id = p.store_id
       JOIN subscriptions sub ON sub.merchant_id = s.merchant_id
       LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN communes cm ON cm.wilaya_code = s.base_wilaya_code AND cm.code = s.base_commune_code
       WHERE p.is_published = true
         AND s.is_published = true
         AND sub.current_period_expires_at > now()
         AND (${searchPattern}::text IS NULL OR p.name ILIKE ${searchPattern})
         AND (${data.categorySlug ?? null}::text IS NULL OR c.slug = ${data.categorySlug ?? null})
+        AND (${data.wilayaCode ?? null}::int IS NULL OR s.base_wilaya_code = ${data.wilayaCode ?? null})
+        AND (${data.communeCode ?? null}::int IS NULL OR s.base_commune_code = ${data.communeCode ?? null})
       ORDER BY p.created_at DESC
       LIMIT 60
     `
@@ -104,5 +123,53 @@ export const listMarketplaceCategoriesInUse = createServerFn({ method: 'GET' }).
     `
   },
 )
+
+export interface MarketplaceWilaya {
+  code: number
+  nameAr: string
+  nameFr: string
+}
+
+/** Only wilayas that have at least one published, active-subscription store based there. */
+export const listMarketplaceWilayasInUse = createServerFn({ method: 'GET' }).middleware([publicRateLimit])
+  .handler(
+  async (): Promise<MarketplaceWilaya[]> => {
+    return sql<MarketplaceWilaya[]>`
+      SELECT DISTINCT w.code, w.name_ar, w.name_fr
+      FROM wilayas w
+      JOIN stores s ON s.base_wilaya_code = w.code
+      JOIN subscriptions sub ON sub.merchant_id = s.merchant_id
+      WHERE s.is_published = true AND sub.current_period_expires_at > now()
+      ORDER BY w.code
+    `
+  },
+)
+
+export interface MarketplaceCommune {
+  code: number
+  nameAr: string
+  nameFr: string
+}
+
+/**
+ * Only communes, within one wilaya, that have at least one published,
+ * active-subscription store based there. Scoped to a wilaya (rather than
+ * returned all at once) both because a commune code is only meaningful
+ * within its wilaya and because the homepage filter only needs this list
+ * once the buyer has already picked a wilaya.
+ */
+export const listMarketplaceCommunesInUse = createServerFn({ method: 'GET' })
+  .middleware([publicRateLimit])
+  .validator(z.object({ wilayaCode: z.number().int().min(1).max(69) }))
+  .handler(async ({ data }): Promise<MarketplaceCommune[]> => {
+    return sql<MarketplaceCommune[]>`
+      SELECT DISTINCT c.code, c.name_ar, c.name_fr
+      FROM communes c
+      JOIN stores s ON s.base_wilaya_code = c.wilaya_code AND s.base_commune_code = c.code
+      JOIN subscriptions sub ON sub.merchant_id = s.merchant_id
+      WHERE c.wilaya_code = ${data.wilayaCode} AND s.is_published = true AND sub.current_period_expires_at > now()
+      ORDER BY c.code
+    `
+  })
 
 

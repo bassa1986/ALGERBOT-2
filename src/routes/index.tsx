@@ -5,9 +5,13 @@ import {
   listMarketplaceStores,
   searchMarketplaceProducts,
   listMarketplaceCategoriesInUse,
+  listMarketplaceWilayasInUse,
+  listMarketplaceCommunesInUse,
   type MarketplaceProductCard,
   type MarketplaceStoreCard,
   type MarketplaceCategory,
+  type MarketplaceWilaya,
+  type MarketplaceCommune,
 } from '~/server/marketplace'
 import { useScrollReveal } from '~/lib/useScrollReveal'
 import { LocaleProvider, useLocale } from '~/lib/i18n/LocaleContext'
@@ -15,18 +19,17 @@ import { formatDzd } from '~/lib/i18n/format'
 import { LanguageSwitch } from '~/components/storefront/LanguageSwitch'
 import { SiteNav } from '~/components/storefront/SiteNav'
 import { SiteFooter } from '~/components/storefront/SiteFooter'
-import { PricingSection } from '~/components/storefront/PricingSection'
-import { listActivePlans } from '~/lib/plans'
+import { CategoryIcon } from '~/components/storefront/CategoryIcons'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    const [stores, products, categories, plans] = await Promise.all([
+    const [stores, products, categories, wilayas] = await Promise.all([
       listMarketplaceStores(),
       searchMarketplaceProducts({ data: {} }),
       listMarketplaceCategoriesInUse(),
-      listActivePlans(),
+      listMarketplaceWilayasInUse(),
     ])
-    return { stores, products, categories, plans }
+    return { stores, products, categories, wilayas }
   },
   component: () => (
     <LocaleProvider>
@@ -36,24 +39,53 @@ export const Route = createFileRoute('/')({
 })
 
 function MarketplaceHome() {
-  const { stores, categories, products: initialProducts, plans } = Route.useLoaderData()
+  const { stores, categories, wilayas, products: initialProducts } = Route.useLoaderData()
   const search = useServerFn(searchMarketplaceProducts)
+  const fetchCommunes = useServerFn(listMarketplaceCommunesInUse)
   const { locale, t, dir } = useLocale()
 
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined)
+  const [selectedWilaya, setSelectedWilaya] = useState<number | undefined>(undefined)
+  const [selectedCommune, setSelectedCommune] = useState<number | undefined>(undefined)
+  const [communes, setCommunes] = useState<MarketplaceCommune[]>([])
   const [products, setProducts] = useState<MarketplaceProductCard[]>(initialProducts)
 
-  // Re-query the server whenever search text or category changes — cross-
-  // store search isn't a small enough dataset to filter client-side the
-  // way the single-store storefront page does, so this hits the server
-  // function directly (debounced on the text input).
+  // The commune filter is scoped to whichever wilaya is currently
+  // selected — reload its options whenever the wilaya changes, and clear
+  // any previously-selected commune since it belonged to the old wilaya.
+  useEffect(() => {
+    setSelectedCommune(undefined)
+    if (selectedWilaya === undefined) {
+      setCommunes([])
+      return
+    }
+    let cancelled = false
+    fetchCommunes({ data: { wilayaCode: selectedWilaya } }).then((rows) => {
+      if (!cancelled) setCommunes(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedWilaya, fetchCommunes])
+
+  // Re-query the server whenever search text, category, wilaya, or commune
+  // changes — cross-store search isn't a small enough dataset to filter
+  // client-side the way the single-store storefront page does, so this
+  // hits the server function directly (debounced on the text input).
   useEffect(() => {
     const handle = setTimeout(() => {
-      search({ data: { q: query || undefined, categorySlug: selectedCategory } }).then(setProducts)
+      search({
+        data: {
+          q: query || undefined,
+          categorySlug: selectedCategory,
+          wilayaCode: selectedWilaya,
+          communeCode: selectedCommune,
+        },
+      }).then(setProducts)
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, selectedCategory, search])
+  }, [query, selectedCategory, selectedWilaya, selectedCommune, search])
 
   const gridRef = useScrollReveal<HTMLDivElement>({
     selector: '.reveal-item',
@@ -69,8 +101,8 @@ function MarketplaceHome() {
       <header className="flex items-center justify-between p-4">
         <div className="flex-1" />
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
-          <p className="text-sm text-[var(--color-text-muted)]">{t.appTagline}</p>
+          <h1 className="app-title text-2xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
+          <p className="text-base font-extrabold text-[var(--color-text-muted)]">{t.appTagline}</p>
         </div>
         <div className="flex-1 flex justify-end">
           <LanguageSwitch />
@@ -78,7 +110,44 @@ function MarketplaceHome() {
       </header>
       <SiteNav />
 
-      <div className="px-4 mb-3">
+      {/* Location band — given its own visual weight, ahead of search, since
+          browsing by wilaya/commune is this marketplace's primary lens, not
+          a secondary filter buried in a dropdown stack. */}
+      {wilayas.length > 0 && (
+        <div className="mx-4 mb-3 rounded-2xl border border-[var(--color-saffron)] bg-[var(--color-saffron-light)]/30 p-3">
+          <p className="mb-2 text-xs font-bold text-[var(--color-text-primary)]">{t.locationBandLabel}</p>
+          <div className="flex gap-2">
+            <select
+              value={selectedWilaya ?? ''}
+              onChange={(e) => setSelectedWilaya(e.target.value ? Number(e.target.value) : undefined)}
+              className="min-w-0 flex-1 rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
+            >
+              <option value="">{t.wilayaFilterAll}</option>
+              {wilayas.map((w: MarketplaceWilaya) => (
+                <option key={w.code} value={w.code}>
+                  {w.code.toString().padStart(2, '0')} — {locale === 'ar' ? w.nameAr : w.nameFr}
+                </option>
+              ))}
+            </select>
+            {selectedWilaya !== undefined && communes.length > 0 && (
+              <select
+                value={selectedCommune ?? ''}
+                onChange={(e) => setSelectedCommune(e.target.value ? Number(e.target.value) : undefined)}
+                className="min-w-0 flex-1 rounded-full border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
+              >
+                <option value="">{t.communeFilterAll}</option>
+                {communes.map((c: MarketplaceCommune) => (
+                  <option key={c.code} value={c.code}>
+                    {locale === 'ar' ? c.nameAr : c.nameFr}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 mb-4">
         <input
           type="search"
           value={query}
@@ -88,31 +157,46 @@ function MarketplaceHome() {
         />
       </div>
 
+      {/* Category browsing — the primary "where do I start" gesture for
+          this marketplace, so it's a tile grid (icon + label, all visible
+          at once) rather than a horizontally-scrolling chip row that hides
+          most options off-screen. */}
       {categories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3 -mx-4">
-          <button
-            onClick={() => setSelectedCategory(undefined)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-              !selectedCategory
-                ? 'bg-[var(--color-action-primary)] text-white'
-                : 'border border-[var(--color-border)] text-[var(--color-text-primary)]'
-            }`}
-          >
-            {t.categoriesAll}
-          </button>
-          {categories.map((c: MarketplaceCategory) => (
+        <div className="px-4 mb-4">
+          <div className="grid grid-cols-4 gap-2">
             <button
-              key={c.slug}
-              onClick={() => setSelectedCategory(c.slug)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                selectedCategory === c.slug
+              onClick={() => setSelectedCategory(undefined)}
+              className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 ${
+                !selectedCategory
                   ? 'bg-[var(--color-action-primary)] text-white'
-                  : 'border border-[var(--color-border)] text-[var(--color-text-primary)]'
+                  : 'bg-[var(--color-surface)] text-[var(--color-text-primary)]'
               }`}
             >
-              {locale === 'ar' ? c.nameAr : c.nameFr}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-6 w-6">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+              <span className="text-[10px] font-semibold leading-tight text-center">{t.categoriesAll}</span>
             </button>
-          ))}
+            {categories.map((c: MarketplaceCategory) => (
+              <button
+                key={c.slug}
+                onClick={() => setSelectedCategory(c.slug)}
+                className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 ${
+                  selectedCategory === c.slug
+                    ? 'bg-[var(--color-action-primary)] text-white'
+                    : 'bg-[var(--color-surface)] text-[var(--color-text-primary)]'
+                }`}
+              >
+                <CategoryIcon slug={c.slug} className="h-6 w-6" />
+                <span className="text-[10px] font-semibold leading-tight text-center line-clamp-2">
+                  {locale === 'ar' ? c.nameAr : c.nameFr}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -149,27 +233,39 @@ function MarketplaceHome() {
           <p className="text-sm text-[var(--color-text-muted)] py-8 text-center">{t.noProductsFound}</p>
         ) : (
           <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {products.map((p: MarketplaceProductCard) => (
-              <Link
-                key={p.id}
-                to="/s/$slug/product/$productId"
-                params={{ slug: p.storeSlug, productId: p.id }}
-                className="reveal-item block rounded-2xl bg-[var(--color-surface)] shadow-sm overflow-hidden"
-              >
-                <div className="aspect-square bg-[var(--color-surface-muted)]">
-                  {p.coverImageUrl && (
-                    <img src={p.coverImageUrl} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+            {products.map((p: MarketplaceProductCard) => {
+              const communeName = locale === 'ar' ? p.communeNameAr : p.communeNameFr
+              const isNew = Date.now() - new Date(p.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000
+              return (
+                <Link
+                  key={p.id}
+                  to="/s/$slug/product/$productId"
+                  params={{ slug: p.storeSlug, productId: p.id }}
+                  className="reveal-item relative block rounded-2xl bg-[var(--color-surface)] shadow-sm overflow-hidden"
+                >
+                  {isNew && (
+                    <span className="absolute top-2 start-2 z-10 rounded-full bg-[var(--color-saffron)] px-2 py-0.5 text-[10px] font-bold text-white">
+                      {t.newListingBadge}
+                    </span>
                   )}
-                </div>
-                <div className="p-3">
-                  <p className="font-medium text-[var(--color-text-primary)] truncate">{p.name}</p>
-                  <p className="text-xs text-[var(--color-text-muted)] truncate">{p.storeName}</p>
-                  <p className="text-sm font-semibold text-[var(--color-action-primary)]">
-                    {formatDzd(p.priceCentimes, locale)}
-                  </p>
-                </div>
-              </Link>
-            ))}
+                  <div className="aspect-square bg-[var(--color-surface-muted)]">
+                    {p.coverImageUrl && (
+                      <img src={p.coverImageUrl} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-base font-bold text-[var(--color-action-primary)]">
+                      {formatDzd(p.priceCentimes, locale)}
+                    </p>
+                    <p className="text-sm text-[var(--color-text-primary)] truncate">{p.name}</p>
+                    <p className="text-xs text-[var(--color-text-muted)] truncate">
+                      {p.storeName}
+                      {communeName ? ` · ${communeName}` : ''}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
@@ -179,7 +275,6 @@ function MarketplaceHome() {
           {t.trackOrder}
         </Link>
         </div>
-        <PricingSection plans={plans} />
         <SiteFooter />
         </div>
         )

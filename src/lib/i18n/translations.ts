@@ -17,7 +17,18 @@ export interface OrderStatusLabels {
 export interface TranslationDictionary {
   appName: string
   appTagline: string
+  visitMerchantTelegram: string
+  visitMerchantWhatsApp: string
+  whatsappLandingIntro: string
+  visitOurShop: string
+  viewProduct: string
+  manageMyStore: string
+  viewOnMap: string
   searchPlaceholder: string
+  wilayaFilterAll: string
+  communeFilterAll: string
+  locationBandLabel: string
+  newListingBadge: string
   categoriesAll: string
   stores: string
   products: string
@@ -131,6 +142,22 @@ export interface MerchantDictionary {
   uploading: string
   name: string
   description: string
+  storeWilaya: string
+  storeWilayaHint: string
+  storeWilayaPlaceholder: string
+  storeCommune: string
+  storeCommunePlaceholder: string
+  storeCommunePlaceholderNoWilaya: string
+  storeGoogleMapsUrl: string
+  storeGoogleMapsUrlHint: string
+  whatsappContact: string
+  whatsappContactHint: string
+  whatsappPlaceholder: string
+  phoneContact: string
+  phoneContactHint: string
+  phonePlaceholder: string
+  phoneVisibleToggle: string
+  wilayaRequiredToPublish: string
   layoutVariant: string
   layoutGeneral: string
   layoutFashion: string
@@ -306,8 +333,19 @@ export interface AdminDictionary {
 export const translations: Record<Locale, TranslationDictionary> = {
   ar: {
     appName: 'AlgerBot',
-    appTagline: 'سوق التجار الجزائريين',
+    appTagline: 'مجمع المحلات الرقمية للتجار الجزائريين',
+    visitMerchantTelegram: 'تابعنا على تيليجرام',
+    visitMerchantWhatsApp: 'تواصل عبر واتساب',
+    whatsappLandingIntro: 'تواصل معنا مباشرة عبر واتساب أو تصفح متجرنا على AlgerBot.',
+    visitOurShop: 'زيارة متجرنا',
+    viewProduct: 'عرض المنتج',
+    manageMyStore: 'إدارة متجري',
+    viewOnMap: 'عرض على الخريطة',
     searchPlaceholder: 'ابحث عن منتج...',
+    wilayaFilterAll: 'كل الولايات',
+    communeFilterAll: 'كل البلديات',
+    locationBandLabel: 'تسوق بالقرب منك',
+    newListingBadge: 'جديد',
     categoriesAll: 'الكل',
     stores: 'المتاجر',
     products: 'المنتجات',
@@ -408,6 +446,23 @@ export const translations: Record<Locale, TranslationDictionary> = {
       uploading: 'جارٍ الرفع...',
       name: 'الاسم',
       description: 'الوصف',
+      storeWilaya: 'ولاية المتجر (الموقع الفعلي)',
+      storeWilayaHint: 'اختر الولاية التي يتواجد فيها متجرك فعليًا. هذا مختلف عن مناطق التوصيل أدناه.',
+      storeWilayaPlaceholder: '-- اختر الولاية --',
+      storeCommune: 'بلدية المتجر (الموقع الفعلي)',
+      storeCommunePlaceholder: '-- اختر البلدية --',
+      storeCommunePlaceholderNoWilaya: 'اختر الولاية أولاً',
+      storeGoogleMapsUrl: 'رابط خرائط جوجل (اختياري)',
+      storeGoogleMapsUrlHint: 'الصق رابط موقع متجرك من زر "مشاركة" في تطبيق خرائط جوجل.',
+      whatsappContact: 'رقم واتساب للتواصل',
+      whatsappContactHint: 'يظهر للمشترين كزر "تواصل عبر واتساب" في صفحة متجرك. اتركه فارغًا لإخفاء الزر.',
+      whatsappPlaceholder: 'مثال: 0555 12 34 56',
+      phoneContact: 'رقم الهاتف',
+      phoneContactHint:
+        'أدخل رقم هاتفك واختر ما إذا كنت تريد أن يظهر للمشترين في صفحة متجرك. لن يظهر إلا إذا فعّلت الخيار أدناه.',
+      phonePlaceholder: 'مثال: 0555 12 34 56',
+      phoneVisibleToggle: 'إظهار رقم الهاتف للمشترين في صفحة متجري',
+      wilayaRequiredToPublish: 'يجب تحديد ولاية وبلدية متجرك قبل نشره.',
       layoutVariant: 'نوع المتجر (التصميم)',
       layoutGeneral: 'عام — شبكة قياسية',
       layoutFashion: 'أزياء — شبكة صور، متغيرات ظاهرة',
@@ -574,7 +629,18 @@ export const translations: Record<Locale, TranslationDictionary> = {
   fr: {
     appName: 'AlgerBot',
     appTagline: 'La marketplace des commerçants algériens',
+    visitMerchantTelegram: 'Suivez-nous sur Telegram',
+    visitMerchantWhatsApp: 'Discuter sur WhatsApp',
+    whatsappLandingIntro: 'Contactez-nous directement sur WhatsApp ou visitez notre boutique sur AlgerBot.',
+    visitOurShop: 'Visiter notre boutique',
+    viewProduct: 'Voir le produit',
+    manageMyStore: 'Gérer ma boutique',
+    viewOnMap: 'Voir sur la carte',
     searchPlaceholder: 'Rechercher un produit...',
+    wilayaFilterAll: 'Toutes les wilayas',
+    communeFilterAll: 'Toutes les communes',
+    locationBandLabel: 'Achetez près de chez vous',
+    newListingBadge: 'Nouveau',
     categoriesAll: 'Tout',
     stores: 'Boutiques',
     products: 'Produits',
@@ -675,6 +741,25 @@ export const translations: Record<Locale, TranslationDictionary> = {
       uploading: 'Téléversement...',
       name: 'Nom',
       description: 'Description',
+      storeWilaya: 'Wilaya de la boutique (emplacement physique)',
+      storeWilayaHint: 'Choisissez la wilaya où se trouve physiquement votre boutique. Différent des zones de livraison ci-dessous.',
+      storeWilayaPlaceholder: '-- Choisir la wilaya --',
+      storeCommune: 'Commune de la boutique (emplacement physique)',
+      storeCommunePlaceholder: '-- Choisir la commune --',
+      storeCommunePlaceholderNoWilaya: "Choisissez d'abord la wilaya",
+      storeGoogleMapsUrl: 'Lien Google Maps (optionnel)',
+      storeGoogleMapsUrlHint: 'Collez le lien de votre boutique depuis le bouton "Partager" de Google Maps.',
+      whatsappContact: 'Numéro WhatsApp de contact',
+      whatsappContactHint:
+        "Affiché aux acheteurs comme bouton \"Discuter sur WhatsApp\" sur la page de votre boutique. Laissez vide pour masquer le bouton.",
+      whatsappPlaceholder: 'Ex : 0555 12 34 56',
+      phoneContact: 'Numéro de téléphone',
+      phoneContactHint:
+        "Saisissez votre numéro et choisissez s'il doit être visible par les acheteurs sur votre boutique. Il n'apparaîtra que si vous activez l'option ci-dessous.",
+      phonePlaceholder: 'Ex : 0555 12 34 56',
+      phoneVisibleToggle: 'Afficher mon numéro de téléphone aux acheteurs sur ma boutique',
+      wilayaRequiredToPublish:
+        'Vous devez indiquer la wilaya et la commune de votre boutique avant de la publier.',
       layoutVariant: 'Type de boutique (mise en page)',
       layoutGeneral: 'Général — grille standard',
       layoutFashion: 'Mode — grille photo, variantes visibles',

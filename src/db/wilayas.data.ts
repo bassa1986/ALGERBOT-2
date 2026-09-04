@@ -1,4 +1,5 @@
-// The 58 wilayas (provinces) of Algeria, official numeric codes 01–58.
+// The 69 wilayas (provinces) of Algeria: the classic 58 (codes 01-58) plus
+// 11 more created in Nov 2025 from former daïras (codes 59-69).
 // nameAr is the standard Arabic name, nameFr the standard French name.
 export const WILAYAS: { code: number; nameAr: string; nameFr: string }[] = [
   { code: 1, nameAr: 'أدرار', nameFr: 'Adrar' },
@@ -59,4 +60,17 @@ export const WILAYAS: { code: number; nameAr: string; nameFr: string }[] = [
   { code: 56, nameAr: 'جانت', nameFr: 'Djanet' },
   { code: 57, nameAr: 'عين صالح', nameFr: 'In Salah' },
   { code: 58, nameAr: 'عين قزام', nameFr: 'In Guezzam' },
+  // The following 11 wilayas were created in November 2025 from former
+  // daïras (delegated wilayas) of the wilayas above.
+  { code: 59, nameAr: 'أفلو', nameFr: 'Aflou' },
+  { code: 60, nameAr: 'بريكة', nameFr: 'Barika' },
+  { code: 61, nameAr: 'القنطرة', nameFr: 'El Kantara' },
+  { code: 62, nameAr: 'بئر العاتر', nameFr: 'Bir El Ater' },
+  { code: 63, nameAr: 'العريشة', nameFr: 'El Aricha' },
+  { code: 64, nameAr: 'قصر الشلالة', nameFr: 'Ksar Chellala' },
+  { code: 65, nameAr: 'عين وسارة', nameFr: 'Aïn Oussera' },
+  { code: 66, nameAr: 'مسعد', nameFr: 'Messaad' },
+  { code: 67, nameAr: 'قصر البخاري', nameFr: 'Ksar El Boukhari' },
+  { code: 68, nameAr: 'بوسعادة', nameFr: 'Boussaâda' },
+  { code: 69, nameAr: 'الأبيض سيدي الشيخ', nameFr: 'El Abiodh Sidi Cheikh' },
 ]

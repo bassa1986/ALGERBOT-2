@@ -43,6 +43,12 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Site title ("AlgerBot") is always shown in uppercase, wherever it
+   appears, without changing the stored/translated string itself. */
+.app-title {
+  text-transform: uppercase;
+}
+
 /* Larger default tap targets for mobile-first buyer/merchant use */
 button,
 a[role='button'],

@@ -4,7 +4,7 @@ import { getRequestHeader } from '@tanstack/react-start/server'
 import { sql } from '~/lib/db'
 import { verifyLoginWidgetPayload, verifyWebAppInitData } from '~/lib/telegram'
 import { issueSession, revokeCurrentSession, merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
-import { authRateLimit, readRateLimit } from '~/lib/rate-limit'
+import { authRateLimit, readRateLimit, mutationRateLimit } from '~/lib/rate-limit'
 
 interface MerchantRow {
   id: string
@@ -140,30 +140,107 @@ export const getCurrentMerchant = createServerFn({ method: 'GET' })
         id: string
         fullName: string | null
         phone: string | null
+        phoneVisibleInStorefront: boolean
         status: string
         telegramFirstName: string | null
         telegramUsername: string | null
         telegramPhotoUrl: string | null
+        whatsappNumber: string | null
         onboardingCompletedAt: Date | null
       }[]
     >`
-      SELECT id, full_name, phone, status, telegram_first_name, telegram_username,
-             telegram_photo_url, onboarding_completed_at
+      SELECT id, full_name, phone, phone_visible_in_storefront, status, telegram_first_name, telegram_username,
+             telegram_photo_url, whatsapp_number, onboarding_completed_at
       FROM merchants
       WHERE id = ${context.merchantId}
     `
     return rows[0] ?? null
   })
 
-export const getOptionalSession = createServerFn({ method: 'GET' }).handler(async () => {
-  return getOptionalMerchantSession()
+const updateWhatsAppNumberSchema = z.object({
+  // Empty string clears the number (buyer-facing button disappears);
+  // otherwise validated after normalization in whatsapp-links.ts —
+  // digits/spaces/+ only here, real shape-checking happens on save below.
+  whatsappNumber: z.string().max(30),
 })
 
+export const updateMyWhatsAppNumber = createServerFn({ method: 'POST' })
+  .middleware([merchantAuthMiddleware, mutationRateLimit])
+  .validator(updateWhatsAppNumberSchema)
+  .handler(async ({ context, data }) => {
+    const trimmed = data.whatsappNumber.trim()
+    if (trimmed === '') {
+      await sql`UPDATE merchants SET whatsapp_number = NULL, updated_at = now() WHERE id = ${context.merchantId}`
+      return { ok: true, whatsappNumber: null }
+    }
 
+    const digitsOnly = trimmed.replace(/\D/g, '')
+    // Loose sanity bound (7-15 digits covers any real international
+    // number, per the ITU E.164 max length) — real formatting/country-code
+    // handling happens in normalizeWhatsAppNumber at link-build time, not
+    // here; this just rejects obvious garbage before it's stored.
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      throw new Error('Numéro WhatsApp invalide')
+    }
 
+    await sql`
+      UPDATE merchants SET whatsapp_number = ${trimmed}, updated_at = now() WHERE id = ${context.merchantId}
+    `
+    return { ok: true, whatsappNumber: trimmed }
+  })
 
-
-export const getTelegramBotUsername = createServerFn({ method: 'GET' }).handler(async () => {
-  return { botUsername: process.env.TELEGRAM_BOT_USERNAME?.trim() || null }
+const updatePhoneVisibilitySchema = z.object({
+  // Empty string clears the stored phone entirely; visible can only be
+  // true if a non-empty phone is provided in the SAME call — enforced
+  // below, not left to the client, since "visible but no phone" or
+  // "phone set but visible=true with no phone" would both be nonsensical
+  // states for the storefront query to read.
+  phone: z.string().max(30),
+  visible: z.boolean(),
 })
+
+export const updateMyPhoneVisibility = createServerFn({ method: 'POST' })
+  .middleware([merchantAuthMiddleware, mutationRateLimit])
+  .validator(updatePhoneVisibilitySchema)
+  .handler(async ({ context, data }) => {
+    const trimmed = data.phone.trim()
+
+    if (trimmed === '') {
+      // No number on file at all -> visibility is meaningless, force it off.
+      await sql`
+        UPDATE merchants SET phone = NULL, phone_visible_in_storefront = false, updated_at = now()
+        WHERE id = ${context.merchantId}
+      `
+      return { ok: true, phone: null, visible: false }
+    }
+
+    const digitsOnly = trimmed.replace(/\D/g, '')
+    // Same loose sanity bound as WhatsApp's own number field above —
+    // 7-15 digits covers any real international number (ITU E.164 max).
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      throw new Error('Numéro de téléphone invalide')
+    }
+
+    await sql`
+      UPDATE merchants SET phone = ${trimmed}, phone_visible_in_storefront = ${data.visible}, updated_at = now()
+      WHERE id = ${context.merchantId}
+    `
+    return { ok: true, phone: trimmed, visible: data.visible }
+  })
+
+export const getOptionalSession = createServerFn({ method: 'GET' })
+  .middleware([readRateLimit])
+  .handler(async () => {
+    return getOptionalMerchantSession()
+  })
+
+
+
+
+
+export const getTelegramBotUsername = createServerFn({ method: 'GET' })
+  .middleware([readRateLimit])
+  .handler(async () => {
+    return { botUsername: process.env.TELEGRAM_BOT_USERNAME?.trim() || null }
+  })
 

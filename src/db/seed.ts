@@ -1,5 +1,6 @@
 import postgres from 'postgres'
 import { WILAYAS } from './wilayas.data'
+import { COMMUNES } from './communes.data'
 import { BASE_CATEGORIES } from './categories.data'
 
 // Standalone script (run via `npm run db:seed`), not part of request handling,
@@ -14,6 +15,17 @@ async function seedWilayas(sql: postgres.Sql) {
     `
   }
   console.log(`Seeded ${WILAYAS.length} wilayas.`)
+}
+
+async function seedCommunes(sql: postgres.Sql) {
+  for (const c of COMMUNES) {
+    await sql`
+      INSERT INTO communes (wilaya_code, code, name_ar, name_fr)
+      VALUES (${c.wilayaCode}, ${c.code}, ${c.nameAr}, ${c.nameFr})
+      ON CONFLICT (wilaya_code, code) DO UPDATE SET name_ar = EXCLUDED.name_ar, name_fr = EXCLUDED.name_fr
+    `
+  }
+  console.log(`Seeded ${COMMUNES.length} communes.`)
 }
 
 async function seedCategories(sql: postgres.Sql) {
@@ -51,6 +63,7 @@ async function main() {
   const sql = postgres(connectionString, { max: 1 })
   try {
     await seedWilayas(sql)
+    await seedCommunes(sql)
     await seedCategories(sql)
     await seedSubscriptionSettings(sql)
   } finally {

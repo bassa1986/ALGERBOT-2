@@ -206,7 +206,7 @@ export const updateMyProduct = createServerFn({ method: 'POST' })
   })
 
 export const setMyProductPublished = createServerFn({ method: 'POST' })
-  .middleware([merchantAuthMiddleware])
+  .middleware([merchantAuthMiddleware, mutationRateLimit])
   .validator(z.object({ productId: z.string().uuid(), isPublished: z.boolean() }))
   .handler(async ({ context, data }) => {
     const storeId = await getOwnedStoreId(context.merchantId)

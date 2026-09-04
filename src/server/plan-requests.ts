@@ -44,7 +44,7 @@ export const getMyPlan = createServerFn({ method: 'GET' })
   })
 
 const requestPlanChangeSchema = z.object({
-  requestedPlanId: z.string().min(1),
+  requestedPlanId: z.string().min(1).max(60),
   note: z.string().max(500).optional(),
 })
 
@@ -224,7 +224,7 @@ export const upsertPlan = createServerFn({ method: 'POST' })
  */
 export const setPlanActive = createServerFn({ method: 'POST' })
   .middleware([adminAuthMiddleware, mutationRateLimit])
-  .validator(z.object({ planId: z.string().min(1), isActive: z.boolean() }))
+  .validator(z.object({ planId: z.string().min(1).max(60), isActive: z.boolean() }))
   .handler(async ({ data }) => {
     await sql`UPDATE plans SET is_active = ${data.isActive} WHERE id = ${data.planId}`
     return { ok: true }

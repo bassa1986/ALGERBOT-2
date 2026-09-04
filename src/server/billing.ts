@@ -74,7 +74,7 @@ export const requestBillingProofUploadUrl = createServerFn({ method: 'POST' })
   })
 
 const submitProofSchema = z.object({
-  storageKey: z.string().min(1),
+  storageKey: z.string().min(1).max(300),
   transactionReference: z.string().min(1).max(200),
   declaredAmountCentimes: z.number().int().min(0),
 })
@@ -160,7 +160,7 @@ export const listBillingQueue = createServerFn({ method: 'GET' })
  * made viewable, and the URL itself expires quickly.
  */
 export const getBillingProofViewUrl = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware])
+  .middleware([adminAuthMiddleware, readRateLimit])
   .validator(z.object({ proofId: z.string().uuid() }))
   .handler(async ({ data }) => {
     const rows = await sql<{ storageKey: string }[]>`

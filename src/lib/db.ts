@@ -27,6 +27,12 @@ export function getDb(): postgres.Sql {
     idle_timeout: 20,
     connect_timeout: 10,
     transform: postgres.camel, // rows come back as camelCase in JS
+    // Most managed Postgres hosts (Pivocloud included) require TLS and
+    // reset the connection outright if a client attempts a plain one —
+    // that shows up as a confusing ECONNRESET rather than a clear TLS
+    // error. Default to requiring SSL unless DATABASE_URL points at
+    // localhost (local dev, where Postgres commonly has no TLS set up).
+    ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1') ? false : 'require',
   })
   return _sql
 }

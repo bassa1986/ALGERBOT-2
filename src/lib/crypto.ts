@@ -119,6 +119,39 @@ export function generateSessionToken(): string {
   return bytesToHex(crypto.getRandomValues(new Uint8Array(32)))
 }
 
+/**
+ * Verifies an HMAC-SHA256 webhook signature against a raw request body —
+ * the scheme Meta's Graph API webhooks use (header: X-Hub-Signature-256,
+ * value: "sha256=<hex>"), and a de facto standard several other webhook
+ * providers (GitHub, etc.) also use. `rawBody` MUST be the exact bytes
+ * Meta sent, read before any JSON parsing — re-serializing a parsed body
+ * changes whitespace/key order and would make every signature mismatch.
+ * `secret` is the provider's app/webhook secret, never a value derived
+ * from the request itself.
+ */
+export async function verifyWebhookSignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string,
+): Promise<boolean> {
+  if (!signatureHeader) return false
+  const prefix = 'sha256='
+  if (!signatureHeader.startsWith(prefix)) return false
+  const providedSig = signatureHeader.slice(prefix.length)
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody))
+  const expectedSig = bytesToHex(sig)
+
+  return timingSafeEqualHex(providedSig, expectedSig)
+}
+
 export async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value))
   return bytesToHex(digest)

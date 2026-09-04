@@ -23,7 +23,7 @@ function PricingPage() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-muted)]" dir={dir}>
       <header className="text-center pt-8 pb-2">
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
+        <h1 className="app-title text-2xl font-bold text-[var(--color-text-primary)]">{t.appName}</h1>
       </header>
       <SiteNav />
       <PricingSection plans={plans} />

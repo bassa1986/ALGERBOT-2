@@ -24,7 +24,7 @@ export const Route = createFileRoute('/s/$slug/')({
 })
 
 function StorefrontHome() {
-  const { store } = parentRoute.useLoaderData()
+  const { store, isOwner } = parentRoute.useLoaderData()
   const { products: initialProducts, categories } = Route.useLoaderData()
   const params = Route.useParams()
   const { t } = useLocale()
@@ -71,7 +71,7 @@ function StorefrontHome() {
 
   return (
     <div>
-      <StorefrontHeader store={store} />
+      <StorefrontHeader store={store} isOwner={isOwner} />
 
       <SearchBar value={search} onChange={setSearch} />
 

@@ -107,7 +107,7 @@ export interface MovementRow {
 }
 
 export const listVariantMovements = createServerFn({ method: 'GET' })
-  .middleware([merchantAuthMiddleware])
+  .middleware([merchantAuthMiddleware, readRateLimit])
   .validator(z.object({ variantId: z.string().uuid() }))
   .handler(async ({ context, data }): Promise<MovementRow[]> => {
     const storeId = await getOwnedStoreId(context.merchantId)
