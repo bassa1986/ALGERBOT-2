@@ -79,7 +79,7 @@ export const authRateLimit = createRateLimitMiddleware('auth', 5, 60_000)
 export const mutationRateLimit = createRateLimitMiddleware('mutation', 30, 60_000)
 
 /** Generous: plain reads (list/get). Still capped, since even reads cost DB round trips. */
-export const readRateLimit = createRateLimitMiddleware('read', 1000, 60_000)
+export const readRateLimit = createRateLimitMiddleware('read', 120, 60_000)
 
 /** Strict: public, unauthenticated, potentially-abusable endpoints (checkout, order lookup, storefront search). */
 export const publicRateLimit = createRateLimitMiddleware('public', 15, 60_000)
