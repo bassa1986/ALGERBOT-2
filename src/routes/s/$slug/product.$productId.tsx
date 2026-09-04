@@ -50,6 +50,11 @@ function ProductDetailPage() {
     { y: 0, opacity: 1, duration: 0.4 },
   )
 
+  const pageRef = useEntranceAnimation<HTMLDivElement>(
+    { y: 40, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.35 },
+  )
+
   const navigate = useNavigate()
   useTelegramBackButton(() => {
     navigate({ to: '/s/$slug', params: { slug: params.slug } })
@@ -73,7 +78,7 @@ function ProductDetailPage() {
   }
 
   return (
-    <div className={variant === 'fashion' ? 'pb-24' : ''}>
+    <div ref={pageRef} className={variant === 'fashion' ? 'pb-24' : ''}>
       <div className="flex items-center justify-between p-4">
         {!isInTelegram && (
           <Link to="/s/$slug" params={{ slug: params.slug }} className="text-sm text-[var(--color-text-muted)]">
@@ -290,5 +295,7 @@ function SpecTable({ description, specificationsLabel }: { description: string; 
     </div>
   )
 }
+
+
 
 

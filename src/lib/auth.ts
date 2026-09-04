@@ -1,7 +1,7 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { sql } from '~/lib/db'
 import { generateSessionToken, sha256Hex, signToken, verifySignedToken } from '~/lib/crypto'
-import { setSessionCookie, clearSessionCookie, readSessionCookieValue } from '~/lib/session-cookie'
+import { setSessionCookie, clearSessionCookie, readSessionCookieValue } from '~/lib/session-cookie.server'
 
 // process.env, cookies, and request headers are all read lazily inside these
 // functions, never at module scope, per the framework's execution model.
