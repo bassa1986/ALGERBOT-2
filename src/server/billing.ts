@@ -211,18 +211,25 @@ export const rejectBillingProof = createServerFn({ method: 'POST' })
   .middleware([adminAuthMiddleware, mutationRateLimit])
   .validator(rejectSchema)
   .handler(async ({ context, data }) => {
-    const rows = await sql<{ status: string }[]>`
-      SELECT status FROM billing_proofs WHERE id = ${data.proofId}
-    `
-    if (!rows[0]) throw new Error('Preuve introuvable')
-    if (rows[0].status !== 'pending') throw new Error('Cette preuve a déjà été traitée')
+    // Locked + transactional for the same reason as approveBillingProof
+    // above: without FOR UPDATE, a reject racing an approve (e.g. two
+    // admin tabs, or two admins) on the SAME pending proof could both
+    // read status = 'pending' and both "win" — one merchant's
+    // subscription gets extended AND their proof gets marked rejected.
+    await sql.begin(async (tx) => {
+      const rows = await tx<{ status: string }[]>`
+        SELECT status FROM billing_proofs WHERE id = ${data.proofId} FOR UPDATE
+      `
+      if (!rows[0]) throw new Error('Preuve introuvable')
+      if (rows[0].status !== 'pending') throw new Error('Cette preuve a déjà été traitée')
 
-    await sql`
-      UPDATE billing_proofs SET
-        status = 'rejected', rejection_reason = ${data.reason},
-        reviewed_by_admin_id = ${context.adminId}, reviewed_at = now()
-      WHERE id = ${data.proofId}
-    `
+      await tx`
+        UPDATE billing_proofs SET
+          status = 'rejected', rejection_reason = ${data.reason},
+          reviewed_by_admin_id = ${context.adminId}, reviewed_at = now()
+        WHERE id = ${data.proofId}
+      `
+    })
     return { ok: true }
   })
 

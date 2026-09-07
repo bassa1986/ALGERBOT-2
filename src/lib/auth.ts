@@ -13,14 +13,21 @@ interface RawSessionRow {
   merchantId: string | null
   adminId: string | null
   expiresAt: Date
+  // Null when this session belongs to an admin (no merchant_id) or, in
+  // principle, if the merchant row was deleted out from under a live
+  // session. Joined in here (rather than looked up separately by
+  // callers) so EVERY merchant-gated code path enforces suspension the
+  // same way, instead of relying on each call site to remember to check.
+  merchantStatus: string | null
 }
 
 async function lookupSessionByToken(token: string): Promise<RawSessionRow | null> {
   const tokenHash = await sha256Hex(token)
   const rows = await sql<RawSessionRow[]>`
-    SELECT id, merchant_id, admin_id, expires_at
-    FROM sessions
-    WHERE token_hash = ${tokenHash} AND expires_at > now()
+    SELECT s.id, s.merchant_id, s.admin_id, s.expires_at, m.status AS merchant_status
+    FROM sessions s
+    LEFT JOIN merchants m ON m.id = s.merchant_id
+    WHERE s.token_hash = ${tokenHash} AND s.expires_at > now()
   `
   return rows[0] ?? null
 }
@@ -95,6 +102,15 @@ export const merchantAuthMiddleware = createMiddleware({ type: 'function' }).ser
     if (!session || !session.merchantId) {
       throw new Error('Unauthorized: merchant session required')
     }
+    // A merchant's existing sessions are NOT revoked the moment an admin
+    // suspends them (see setMerchantStatus in server/admin.ts) — that's
+    // deliberate, so reinstating a merchant doesn't force them to log in
+    // again. That means suspension MUST be checked here, on every gated
+    // action, not just at login time, or a suspended merchant with a
+    // still-valid cookie keeps full dashboard access indefinitely.
+    if (session.merchantStatus === 'suspended') {
+      throw new Error('Unauthorized: this merchant account has been suspended')
+    }
     return next({ context: { merchantId: session.merchantId } satisfies MerchantSessionContext })
   },
 )
@@ -129,6 +145,11 @@ export async function requireMerchantSession(): Promise<MerchantSession> {
   if (!session || !session.merchantId) {
     throw new Error('Unauthorized: merchant session required')
   }
+  // Same suspension enforcement as merchantAuthMiddleware — see that
+  // comment for why this can't just be checked at login time.
+  if (session.merchantStatus === 'suspended') {
+    throw new Error('Unauthorized: this merchant account has been suspended')
+  }
   return { merchantId: session.merchantId }
 }
 
@@ -151,6 +172,11 @@ export async function requireAdminSession(): Promise<AdminSession> {
 export async function getOptionalMerchantSession(): Promise<MerchantSession | null> {
   const session = await readCurrentSession()
   if (!session || !session.merchantId) return null
+  // Non-throwing variant: a suspended merchant is treated the same as
+  // "not logged in" here rather than raising, so callers that branch on
+  // this (e.g. "is the current visitor this store's own owner?") degrade
+  // to the anonymous-visitor view instead of erroring.
+  if (session.merchantStatus === 'suspended') return null
   return { merchantId: session.merchantId }
 }
 

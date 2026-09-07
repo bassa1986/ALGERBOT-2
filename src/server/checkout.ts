@@ -72,8 +72,10 @@ export interface CreateOrderResult {
 export async function createOrder(data: CreateOrderInput): Promise<CreateOrderResult> {
   const storeRows = await sql<{ id: string }[]>`
     SELECT s.id FROM stores s
+    JOIN merchants m ON m.id = s.merchant_id
     JOIN subscriptions sub ON sub.merchant_id = s.merchant_id
     WHERE s.slug = ${data.storeSlug} AND s.is_published = true AND sub.current_period_expires_at > now()
+      AND m.status != 'suspended'
   `
   const store = storeRows[0]
   if (!store) throw new Error('Boutique introuvable ou indisponible')

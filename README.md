@@ -19,7 +19,7 @@ Multi-merchant marketplace for Algerian merchants, built on TanStack Start (Reac
    npm install
    ```
 
-2. Set up PostgreSQL - any Postgres 14+ works. Create a database and set `PIVOTCLOUD_DATABASE_URL` (see `.env.example`) to point at it.
+2. Set up PostgreSQL - any Postgres 14+ works. Create a database and set `DATABASE_URL` (see `.env.example`) to point at it.
 
 3. Copy the env file and fill in real values:
    ```bash
@@ -58,7 +58,7 @@ Set `PORT` (default 3000) and `HOST` (default 0.0.0.0) as needed for your hostin
 
 All documented with inline comments in `.env.example`. Summary:
 
-- `PIVOTCLOUD_DATABASE_URL` - Postgres connection string
+- `DATABASE_URL` - Postgres connection string
 - `SESSION_SECRET` - HMAC signing key for session cookies - use a long random value in production
 - `APP_ORIGIN` - full origin of your deployment, used for CSRF origin-checking on admin login
 - `ADEX_ENDPOINT`, `ADEX_REGION`, `ADEX_BUCKET`, `ADEX_ACCESS_KEY_ID`, `ADEX_SECRET_ACCESS_KEY`, `ADEX_PUBLIC_BASE_URL` - Adex S3-compatible object storage credentials

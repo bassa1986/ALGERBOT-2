@@ -50,6 +50,33 @@ async function getAppliedVersions(sql: postgres.Sql): Promise<Set<string>> {
   return new Set(rows.map((r) => r.version))
 }
 
+// Arbitrary, fixed lock key for this app's own migration runner —
+// scoped to a session-level advisory lock (pg_advisory_lock), not tied to
+// any table/row, so it has zero interaction with real app data. Chosen
+// once and never reused elsewhere in this codebase.
+const MIGRATION_LOCK_KEY = 727_483_910
+
+/**
+ * Serializes concurrent invocations of this script against the SAME
+ * database. Without this, deploying multiple replicas that each run
+ * `db:migrate` in their own container entrypoint (see the Dockerfile CMD)
+ * at startup could have two replicas both see the same pending migration
+ * as unapplied and both attempt to run it concurrently — best case a
+ * harmless error from the second one (e.g. a duplicate CREATE TABLE), worst
+ * case a genuine race inside the migration's own SQL. pg_advisory_lock
+ * blocks the second caller until the first releases the lock (i.e. until
+ * migration application finishes), rather than erroring outright — so a
+ * second replica just waits its turn, then finds nothing left to do.
+ */
+async function withMigrationLock<T>(sql: postgres.Sql, fn: () => Promise<T>): Promise<T> {
+  await sql`SELECT pg_advisory_lock(${MIGRATION_LOCK_KEY})`
+  try {
+    return await fn()
+  } finally {
+    await sql`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`
+  }
+}
+
 async function up(sql: postgres.Sql) {
   await ensureMigrationsTable(sql)
   const applied = await getAppliedVersions(sql)
@@ -109,8 +136,8 @@ async function main() {
     ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1') ? false : 'require',
   })
   try {
-    if (direction === 'up') await up(sql)
-    else await down(sql)
+    if (direction === 'up') await withMigrationLock(sql, () => up(sql))
+    else await withMigrationLock(sql, () => down(sql))
   } finally {
     await sql.end()
   }

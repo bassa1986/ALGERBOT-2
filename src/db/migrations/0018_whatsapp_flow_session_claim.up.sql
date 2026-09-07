@@ -1,0 +1,18 @@
+-- Lets handleFlowCompletion (src/routes/api/whatsapp/webhook.ts) claim a
+-- session atomically before calling createOrder(), instead of a plain
+-- "SELECT, check order_id, then call createOrder" which two near-
+-- simultaneous webhook redeliveries for the SAME flow_token could both
+-- pass before either had written order_id -- resulting in createOrder()
+-- (and its stock decrement) running twice for one buyer session. Meta
+-- redelivers webhooks aggressively on anything but an instant 200, so
+-- this is a real, not theoretical, race.
+--
+-- The claim is a single atomic `UPDATE ... WHERE order_id IS NULL AND
+-- (claimed_at IS NULL OR claimed_at < now() - stale window) RETURNING`.
+-- Postgres serializes concurrent UPDATEs to the same row, so only one
+-- concurrent request can ever see its own claim reflected in the
+-- RETURNING set; the other gets zero rows back and no-ops. A stale claim
+-- (crash mid-flight, before order_id or a claim-release was written) can
+-- be reclaimed after the window rather than deadlocking the session
+-- forever.
+ALTER TABLE whatsapp_flow_sessions ADD COLUMN claimed_at TIMESTAMPTZ;

@@ -72,17 +72,36 @@ async function handleFlowCompletion(message: IncomingMessage) {
     return
   }
 
-  const sessionRows = await sql<{ storeSlug: string; state: SessionState; orderId: string | null }[]>`
-    SELECT store_slug, state, order_id FROM whatsapp_flow_sessions WHERE flow_token = ${flowToken}
+  // Stale claims (a previous attempt crashed after claiming but before
+  // either writing order_id or releasing the claim on failure) are
+  // reclaimable after this window, so a permanently-stuck session can't
+  // result from a mid-flight crash.
+  const CLAIM_STALE_MS = 2 * 60 * 1000
+
+  // Atomically claim this session: a single UPDATE...WHERE...RETURNING is
+  // one statement, so Postgres serializes concurrent attempts against the
+  // same row itself -- only the request whose UPDATE actually matched the
+  // WHERE clause gets a row back in RETURNING. This replaces a previous
+  // plain "SELECT, check order_id in application code, then call
+  // createOrder" -- which two near-simultaneous webhook redeliveries for
+  // the SAME flow_token (Meta retries aggressively on anything but an
+  // instant 200) could both pass before either had written order_id,
+  // causing createOrder() -- and its stock decrement -- to run twice for
+  // one buyer session.
+  const claimRows = await sql<{ storeSlug: string; state: SessionState }[]>`
+    UPDATE whatsapp_flow_sessions
+    SET claimed_at = now()
+    WHERE flow_token = ${flowToken}
+      AND order_id IS NULL
+      AND (claimed_at IS NULL OR claimed_at < now() - make_interval(secs => ${CLAIM_STALE_MS / 1000}))
+    RETURNING store_slug, state
   `
-  const session = sessionRows[0]
+  const session = claimRows[0]
   if (!session) {
-    console.error(`[whatsapp-webhook] no session found for flow_token ${flowToken}`)
-    return
-  }
-  if (session.orderId) {
-    // Already placed -- Meta can redeliver webhooks, this must be
-    // idempotent rather than double-charging stock on a retry.
+    // Three possible reasons, all of which are correctly a silent no-op
+    // here: (1) no session exists for this flow_token, (2) the order was
+    // already placed (order_id is set), or (3) another concurrent
+    // delivery holds a fresh, non-stale claim on it right now.
     return
   }
 
@@ -117,6 +136,13 @@ async function handleFlowCompletion(message: IncomingMessage) {
     // inside Meta's 24-hour customer service window (see sendTextMessage's
     // doc comment for why that constraint matters elsewhere).
     console.error(`[whatsapp-webhook] createOrder failed for flow_token ${flowToken}`, err)
+
+    // Release the claim immediately (rather than waiting out
+    // CLAIM_STALE_MS) so a legitimate retry -- another webhook
+    // redelivery, or the buyer completing the Flow again -- can attempt
+    // this session again right away instead of being blocked for up to
+    // 2 minutes.
+    await sql`UPDATE whatsapp_flow_sessions SET claimed_at = NULL WHERE flow_token = ${flowToken}`
 
     const reason = err instanceof Error ? err.message : 'Une erreur est survenue'
     try {

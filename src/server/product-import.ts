@@ -4,6 +4,8 @@ import * as XLSX from 'xlsx'
 import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { mutationRateLimit } from '~/lib/rate-limit'
+import { assertWithinQuota, ProductLimitExceededError } from '~/lib/quota'
+import { getPlanLimits } from '~/lib/plans'
 
 // ---------- Row-level validation ----------
 
@@ -161,6 +163,38 @@ export const confirmProductImport = createServerFn({ method: 'POST' })
       const list = bySku.get(row.sku) ?? []
       list.push(row)
       bySku.set(row.sku, list)
+    }
+
+    // Enforce the same trial/subscription validity check single-product
+    // creation gets (createMyProduct in products.ts) — an expired trial
+    // shouldn't be able to bulk-import either. This call alone doesn't
+    // cover the product-count cap: assertWithinQuota's isNewProduct mode
+    // is shaped for "reject the ONE product about to be added", not "N
+    // new products in one batch", so the count check below is separate.
+    await assertWithinQuota(context.merchantId)
+
+    const merchantPlanRows = await sql<{ planId: string }[]>`
+      SELECT plan_id AS "planId" FROM merchants WHERE id = ${context.merchantId}
+    `
+    const plan = await getPlanLimits(merchantPlanRows[0].planId)
+    if (plan.maxProducts !== null) {
+      // Only SKUs not already present for this store count as "new" —
+      // re-importing/updating existing SKUs must not itself be blocked
+      // by the cap. Checked BEFORE the transaction below, against the
+      // FULL batch, so an over-limit import is rejected as a whole
+      // rather than partially applying up to the limit and silently
+      // dropping the rest.
+      const [existingSkuRows, currentCountRows] = await Promise.all([
+        sql<{ sku: string }[]>`SELECT sku FROM products WHERE store_id = ${store.id}`,
+        sql<{ count: string }[]>`SELECT COUNT(*)::text AS count FROM products WHERE store_id = ${store.id}`,
+      ])
+      const existingSkus = new Set(existingSkuRows.map((r) => r.sku))
+      const newSkuCount = Array.from(bySku.keys()).filter((sku) => !existingSkus.has(sku)).length
+      const currentCount = parseInt(currentCountRows[0].count, 10)
+
+      if (currentCount + newSkuCount > plan.maxProducts) {
+        throw new ProductLimitExceededError(currentCount, plan.maxProducts)
+      }
     }
 
     let upsertedProducts = 0
