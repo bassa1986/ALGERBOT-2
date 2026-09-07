@@ -6,6 +6,7 @@ import { useCart } from './CartContext'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
 import { ShareSheet, type ShareTarget } from './ShareSheet'
+import { NegotiateSheet } from './NegotiateSheet'
 import {
   buildProductTelegramLink,
   buildShareableProductUrl,
@@ -226,10 +227,14 @@ export function ProductCard({
             contact channel configured, and only ever reachable from a
             store page (ProductCard is never used on the marketplace
             homepage, which has its own separate card markup — see
-            src/routes/index.tsx). Opens a small in-page channel picker;
-            picking one hands off to the real WhatsApp/Telegram app with
-            a message linking to this product's share page, which carries
-            a real photo preview once sent (see buildNegotiateMessage). */}
+            src/routes/index.tsx). Opens NegotiateSheet (a bottom sheet
+            rendered outside this card's own <Link>, see that component's
+            doc comment for why — a dropdown nested inside the card was
+            getting silently clipped by the card's own rounded-corner
+            overflow-hidden). Picking a channel hands off to the real
+            WhatsApp/Telegram app with a message linking to this product's
+            share page, which carries a real photo preview once sent (see
+            buildNegotiateMessage). */}
         {(hasWhatsapp || hasTelegram) && (
           <div className="relative mt-1.5" onClick={(e) => e.preventDefault()}>
             <button
@@ -239,28 +244,6 @@ export function ProductCard({
             >
               {t.negotiateButton}
             </button>
-            {isNegotiateOpen && (
-              <div className="absolute z-30 mt-1 flex flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
-                {hasWhatsapp && (
-                  <button
-                    type="button"
-                    onClick={handleNegotiateWhatsApp}
-                    className="whitespace-nowrap rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white text-start"
-                  >
-                    {t.visitMerchantWhatsApp}
-                  </button>
-                )}
-                {hasTelegram && (
-                  <button
-                    type="button"
-                    onClick={handleNegotiateTelegram}
-                    className="whitespace-nowrap rounded-lg bg-[#229ED9] px-3 py-1.5 text-xs font-semibold text-white text-start"
-                  >
-                    {t.visitMerchantTelegram}
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -326,6 +309,14 @@ export function ProductCard({
       </Link>
 
       <ShareSheet target={shareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} fbAppId={fbAppId} />
+      <NegotiateSheet
+        isOpen={isNegotiateOpen}
+        onClose={() => setIsNegotiateOpen(false)}
+        hasWhatsapp={hasWhatsapp}
+        hasTelegram={hasTelegram}
+        onWhatsApp={handleNegotiateWhatsApp}
+        onTelegram={handleNegotiateTelegram}
+      />
     </>
   )
 }
