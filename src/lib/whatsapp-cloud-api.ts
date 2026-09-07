@@ -128,3 +128,74 @@ export async function sendTextMessage(to: string, body: string): Promise<void> {
     throw new Error(`WhatsApp Cloud API error (${res.status}): ${errorBody}`)
   }
 }
+
+/**
+ * Sends a login OTP via a pre-approved Meta "Authentication" category
+ * template — the ONLY Meta-compliant way to deliver a one-time
+ * passcode over WhatsApp. Plain free-form text (sendTextMessage above)
+ * is explicitly disallowed for this by Meta's own policy, and doesn't
+ * even work outside the 24-hour customer-service window, which a
+ * merchant logging in has usually not opened (they haven't necessarily
+ * messaged the business number recently) — so this is not optional
+ * for this use case, unlike the failure-notification use of
+ * sendTextMessage elsewhere in this app.
+ *
+ * REQUIRES SETUP ON META'S SIDE THAT THIS CODE CANNOT DO FOR YOU: create
+ * an Authentication-category template (Meta Business Manager > Account
+ * tools > Message templates > Create template > Authentication) with a
+ * Copy Code OTP button, get it approved (usually near-instant once your
+ * business is verified, otherwise up to 24-48h), and set its name/
+ * language in WHATSAPP_OTP_TEMPLATE_NAME / WHATSAPP_OTP_TEMPLATE_LANGUAGE.
+ * Until that template exists and is approved, this call will fail —
+ * logged clearly rather than silently swallowed, since a merchant unable
+ * to log in needs this to be loud, not quiet.
+ */
+export async function sendAuthenticationTemplate(to: string, code: string): Promise<void> {
+  const config = getConfig()
+  const templateName = process.env.WHATSAPP_OTP_TEMPLATE_NAME
+  const templateLanguage = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'fr'
+  if (!config || !templateName) {
+    console.warn(
+      `[whatsapp] WHATSAPP_* / WHATSAPP_OTP_TEMPLATE_NAME env vars not set — not sending OTP to ${to}.`,
+    )
+    return
+  }
+
+  const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: templateLanguage },
+        components: [
+          // Per Meta's documented format, the code must appear TWICE:
+          // once in the body (renders as "<code> is your verification
+          // code"), once in the button so tapping "Copy Code" copies the
+          // right value.
+          { type: 'body', parameters: [{ type: 'text', text: code }] },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [{ type: 'text', text: code }],
+          },
+        ],
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const errorBody = await res.text()
+    throw new Error(`WhatsApp Cloud API error sending OTP template (${res.status}): ${errorBody}`)
+  }
+}

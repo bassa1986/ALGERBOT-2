@@ -7,19 +7,20 @@ import { useProductPhotoUpload } from '~/lib/useProductPhotoUpload'
 import { PhotoGallery } from '~/components/PhotoGallery'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
-import { buildAppLink, buildProductTelegramLink } from '~/lib/telegram-links'
+import { buildAppLink, buildProductTelegramLink, type TelegramLinkConfig } from '~/lib/telegram-links'
+import { getTelegramLinkConfig } from '~/server/auth'
 import { useCopyToClipboard } from '~/lib/useCopyToClipboard'
 
 export const Route = createFileRoute('/_authenticated/products/')({
   loader: async () => {
-    const products = await listMyProducts()
-    return { products }
+    const [products, telegramConfig] = await Promise.all([listMyProducts(), getTelegramLinkConfig()])
+    return { products, telegramConfig }
   },
   component: ProductsListPage,
 })
 
 function ProductsListPage() {
-  const { products } = Route.useLoaderData()
+  const { products, telegramConfig } = Route.useLoaderData()
   const router = useRouter()
   const [expandedPhotosFor, setExpandedPhotosFor] = useState<string | null>(null)
   const { t, dir } = useLocale()
@@ -32,8 +33,10 @@ function ProductsListPage() {
         <h1 className="text-xl font-bold text-[var(--color-text-primary)]">{m.productsTitle}</h1>
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => copyAppLink(buildAppLink())}
-            className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
+            onClick={() => telegramConfig && copyAppLink(buildAppLink(telegramConfig))}
+            disabled={!telegramConfig}
+            title={telegramConfig ? undefined : 'Configuration Telegram manquante'}
+            className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] disabled:opacity-50"
           >
             {appLinkCopied ? m.linkCopied : m.copyAppLink}
           </button>
@@ -68,6 +71,7 @@ function ProductsListPage() {
               setExpandedPhotosFor(expandedPhotosFor === product.id ? null : product.id)
             }
             onChanged={() => router.invalidate({ sync: true })}
+            telegramConfig={telegramConfig}
           />
         ))}
       </div>
@@ -80,11 +84,13 @@ function ProductRow({
   isPhotosExpanded,
   onTogglePhotos,
   onChanged,
+  telegramConfig,
 }: {
   product: ProductListItem
   isPhotosExpanded: boolean
   onTogglePhotos: () => void
   onChanged: () => void
+  telegramConfig: TelegramLinkConfig | null
 }) {
   const setPublished = useServerFn(setMyProductPublished)
   const deleteProduct = useServerFn(deleteMyProduct)
@@ -135,9 +141,10 @@ function ProductRow({
               needed here per spec; that's the buyer-facing share menu's job. */}
           <button
             type="button"
-            onClick={() => copyProductLink(buildProductTelegramLink(product.id))}
-            title={m.copyProductLink}
-            className="rounded-full border border-[var(--color-border)] p-2 text-xs"
+            onClick={() => telegramConfig && copyProductLink(buildProductTelegramLink(telegramConfig, product.id))}
+            disabled={!telegramConfig}
+            title={telegramConfig ? m.copyProductLink : 'Configuration Telegram manquante'}
+            className="rounded-full border border-[var(--color-border)] p-2 text-xs disabled:opacity-50"
           >
             {linkCopied ? '✓' : '🔗'}
           </button>

@@ -4,8 +4,11 @@ import { useLocale } from '~/lib/i18n/LocaleContext'
 export interface ShareTarget {
   /** The URL to actually share — see telegram-links.ts for how this is
    * built differently for the Telegram-native option vs every other
-   * channel. */
-  telegramUrl: string
+   * channel. Optional: absent when TELEGRAM_BOT_USERNAME/
+   * TELEGRAM_MINIAPP_SHORT_NAME aren't configured on this deployment —
+   * the Telegram-native share button is hidden in that case rather than
+   * built with a broken URL. */
+  telegramUrl?: string
   externalUrl: string
   title: string
   text: string
@@ -13,12 +16,15 @@ export interface ShareTarget {
 
 /**
  * FB_APP_ID is required for the Messenger dialog/send flow specifically
- * (Facebook's API requires a registered app id for that endpoint). Set
- * VITE_FACEBOOK_APP_ID once you've created a Facebook App and enabled the
- * Messenger product on it. The plain Facebook Sharer option does NOT need
- * this — only Messenger does.
+ * (Facebook's API requires a registered app id for that endpoint). Passed
+ * in as a prop (fetched server-side via getFacebookAppId, see
+ * src/server/auth.ts) rather than read here via import.meta.env — Vite
+ * inlines import.meta.env.VITE_* at BUILD time, which is silently empty
+ * on platforms (Pivocloud included) that inject env vars into the running
+ * container instead of the Docker build step. The plain Facebook Sharer
+ * option does NOT need this — only Messenger does, and this component
+ * already falls back to it when fbAppId is null.
  */
-const FB_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID ?? ''
 
 /**
  * Detects whether navigator.share is actually usable — some in-app
@@ -55,10 +61,12 @@ export function ShareSheet({
   target,
   isOpen,
   onClose,
+  fbAppId,
 }: {
   target: ShareTarget
   isOpen: boolean
   onClose: () => void
+  fbAppId: string | null
 }) {
   const { t, dir } = useLocale()
   const [copied, setCopied] = useState(false)
@@ -71,7 +79,7 @@ export function ShareSheet({
   if (!isOpen) return null
 
   const encodedUrl = encodeURIComponent(target.externalUrl)
-  const encodedTelegramUrl = encodeURIComponent(target.telegramUrl)
+  const encodedTelegramUrl = target.telegramUrl ? encodeURIComponent(target.telegramUrl) : null
   const shareText = `${target.text} ${target.externalUrl}`
   const encodedShareText = encodeURIComponent(shareText)
 
@@ -86,6 +94,7 @@ export function ShareSheet({
   }
 
   function handleTelegramShare() {
+    if (!encodedTelegramUrl) return
     // Telegram's own share utility, using the REAL t.me deep link (not
     // the landing page) — sharing from inside Telegram's own share flow
     // never has the "Telegram isn't installed" problem the landing-page
@@ -113,7 +122,7 @@ export function ShareSheet({
   }
 
   function handleMessengerShare() {
-    if (!FB_APP_ID) {
+    if (!fbAppId) {
       // Config gap: Messenger's dialog/send requires a registered
       // Facebook App ID. Without one, fall back to the Facebook sharer
       // rather than sending the buyer to a broken Facebook error page.
@@ -123,7 +132,7 @@ export function ShareSheet({
     const messengerAppUrl = `fb-messenger://share?link=${encodedUrl}`
     const messengerWebUrl =
       `https://www.facebook.com/dialog/send?link=${encodedUrl}` +
-      `&app_id=${encodeURIComponent(FB_APP_ID)}&redirect_uri=${encodedUrl}`
+      `&app_id=${encodeURIComponent(fbAppId)}&redirect_uri=${encodedUrl}`
     tryAppSchemeThenFallback(messengerAppUrl, messengerWebUrl)
     onClose()
   }
@@ -165,7 +174,9 @@ export function ShareSheet({
         )}
 
         <div className="grid grid-cols-4 gap-3 mb-3">
-          <ShareChannelButton emoji="✈️" label="Telegram" onClick={handleTelegramShare} />
+          {encodedTelegramUrl && (
+            <ShareChannelButton emoji="✈️" label="Telegram" onClick={handleTelegramShare} />
+          )}
           <ShareChannelButton emoji="💬" label="WhatsApp" onClick={handleWhatsAppShare} />
           <ShareChannelButton emoji="📘" label="Facebook" onClick={handleFacebookShare} />
           <ShareChannelButton emoji="💌" label="Messenger" onClick={handleMessengerShare} />

@@ -13,6 +13,16 @@ import { getStartParam, useScrollToSharedProduct } from '~/lib/useDeepLinkRoutin
 const parentRoute = getRouteApi('/s/$slug')
 
 export const Route = createFileRoute('/s/$slug/')({
+  // Supports /s/{slug}?product={id} as a direct, non-Telegram deep link:
+  // the homepage's product grid links here (not to the standalone detail
+  // page) so clicking a product from the marketplace lands the buyer
+  // inside the real store, scrolled to that exact item — reinforcing
+  // "you're in a shop" rather than "here's an isolated ad". Reuses the
+  // exact same scroll/highlight mechanism already built for Telegram's
+  // start_param deep links (see useScrollToSharedProduct below).
+  validateSearch: (search: Record<string, unknown>) => ({
+    product: typeof search.product === 'string' ? search.product : undefined,
+  }),
   loader: async ({ params }) => {
     const [products, categories] = await Promise.all([
       listPublicProducts({ data: { storeSlug: params.slug } }),
@@ -24,9 +34,10 @@ export const Route = createFileRoute('/s/$slug/')({
 })
 
 function StorefrontHome() {
-  const { store, isOwner } = parentRoute.useLoaderData()
+  const { store, isOwner, telegramConfig, fbAppId } = parentRoute.useLoaderData()
   const { products: initialProducts, categories } = Route.useLoaderData()
   const params = Route.useParams()
+  const routeSearch = Route.useSearch()
   const { t } = useLocale()
 
   const [search, setSearch] = useState('')
@@ -34,23 +45,29 @@ function StorefrontHome() {
   const [listView, setListView] = useState(false) // grocery-only toggle
   const [sharedProductId, setSharedProductId] = useState<string | null>(null)
 
-  // Deep-link routing: a t.me/algerbot/store?startapp=<product_id> link
-  // (opened from Telegram directly, or resolved via the /share/product/$id
-  // landing page's redirect for external channels) surfaces here as
-  // Telegram's start_param. Per spec, the buyer stays on this listing page
-  // and the matching card scrolls into view + highlights, rather than
-  // navigating to a separate detail page — see useScrollToSharedProduct.
+  // Deep-link routing: a product can be requested two ways —
+  //   1. Telegram's t.me/algerbot/store?startapp=<product_id> (opened
+  //      directly in Telegram, or resolved via /share/product/$id's
+  //      redirect for external channels) — surfaces as start_param.
+  //   2. A plain ?product=<id> query param — used by the marketplace
+  //      homepage's own product cards (see src/routes/index.tsx), so
+  //      browsing the marketplace and clicking an item lands here rather
+  //      than on a separate, isolated detail page.
+  // Either way, the buyer stays on this listing page and the matching
+  // card scrolls into view + highlights — see useScrollToSharedProduct.
   useEffect(() => {
     const startParam = getStartParam()
-    if (startParam) {
-      setSharedProductId(startParam)
+    const targetProductId = startParam || routeSearch.product
+    if (targetProductId) {
+      setSharedProductId(targetProductId)
       // A deep-linked product should be reachable even if a category
       // filter or leftover search text would otherwise hide it — clear
       // both so the scroll target is guaranteed to be in filteredProducts.
       setSelectedCategory(undefined)
       setSearch('')
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run if the search param itself changes, not on every render
+  }, [routeSearch.product])
 
   useScrollToSharedProduct(sharedProductId)
 
@@ -71,7 +88,7 @@ function StorefrontHome() {
 
   return (
     <div>
-      <StorefrontHeader store={store} isOwner={isOwner} />
+      <StorefrontHeader store={store} isOwner={isOwner} telegramConfig={telegramConfig} fbAppId={fbAppId} />
 
       <SearchBar value={search} onChange={setSearch} />
 
@@ -117,6 +134,11 @@ function StorefrontHome() {
           storeSlug={params.slug}
           variant={variant}
           listView={variant === 'grocery' && listView}
+          telegramConfig={telegramConfig}
+          fbAppId={fbAppId}
+          storeName={store.name}
+          merchantWhatsappNumber={store.merchantWhatsappNumber}
+          merchantTelegramUsername={store.merchantTelegramUsername}
         />
       </div>
     </div>

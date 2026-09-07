@@ -20,6 +20,7 @@ import { LanguageSwitch } from '~/components/storefront/LanguageSwitch'
 import { SiteNav } from '~/components/storefront/SiteNav'
 import { SiteFooter } from '~/components/storefront/SiteFooter'
 import { CategoryIcon } from '~/components/storefront/CategoryIcons'
+import { PinIcon } from '~/components/storefront/Icons'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -50,6 +51,7 @@ function MarketplaceHome() {
   const [selectedCommune, setSelectedCommune] = useState<number | undefined>(undefined)
   const [communes, setCommunes] = useState<MarketplaceCommune[]>([])
   const [products, setProducts] = useState<MarketplaceProductCard[]>(initialProducts)
+  const [isSearching, setIsSearching] = useState(false)
 
   // The commune filter is scoped to whichever wilaya is currently
   // selected — reload its options whenever the wilaya changes, and clear
@@ -75,6 +77,7 @@ function MarketplaceHome() {
   // hits the server function directly (debounced on the text input).
   useEffect(() => {
     const handle = setTimeout(() => {
+      setIsSearching(true)
       search({
         data: {
           q: query || undefined,
@@ -82,7 +85,9 @@ function MarketplaceHome() {
           wilayaCode: selectedWilaya,
           communeCode: selectedCommune,
         },
-      }).then(setProducts)
+      })
+        .then(setProducts)
+        .finally(() => setIsSearching(false))
     }, 250)
     return () => clearTimeout(handle)
   }, [query, selectedCategory, selectedWilaya, selectedCommune, search])
@@ -228,19 +233,25 @@ function MarketplaceHome() {
       )}
 
       <div className="px-4 pb-8">
-        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-2">{t.products}</h2>
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--color-text-primary)]">
+          {t.products}
+          {isSearching && (
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-action-primary)] border-t-transparent" />
+          )}
+        </h2>
         {products.length === 0 ? (
           <p className="text-sm text-[var(--color-text-muted)] py-8 text-center">{t.noProductsFound}</p>
         ) : (
-          <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div ref={gridRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {products.map((p: MarketplaceProductCard) => {
               const communeName = locale === 'ar' ? p.communeNameAr : p.communeNameFr
               const isNew = Date.now() - new Date(p.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000
               return (
                 <Link
                   key={p.id}
-                  to="/s/$slug/product/$productId"
-                  params={{ slug: p.storeSlug, productId: p.id }}
+                  to="/s/$slug"
+                  params={{ slug: p.storeSlug }}
+                  search={{ product: p.id }}
                   className="reveal-item relative block rounded-2xl bg-[var(--color-surface)] shadow-sm overflow-hidden"
                 >
                   {isNew && (
@@ -253,14 +264,17 @@ function MarketplaceHome() {
                       <img src={p.coverImageUrl} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
                     )}
                   </div>
-                  <div className="p-3">
-                    <p className="text-base font-bold text-[var(--color-action-primary)]">
+                  <div className="p-2.5">
+                    <p className="text-lg font-black leading-tight text-[var(--color-action-primary)]">
                       {formatDzd(p.priceCentimes, locale)}
                     </p>
-                    <p className="text-sm text-[var(--color-text-primary)] truncate">{p.name}</p>
-                    <p className="text-xs text-[var(--color-text-muted)] truncate">
-                      {p.storeName}
-                      {communeName ? ` · ${communeName}` : ''}
+                    <p className="text-sm leading-snug text-[var(--color-text-primary)] truncate">{p.name}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-[var(--color-text-muted)] truncate">
+                      <PinIcon className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {p.storeName}
+                        {communeName ? ` · ${communeName}` : ''}
+                      </span>
                     </p>
                   </div>
                 </Link>

@@ -6,10 +6,21 @@ import { LanguageSwitch } from './LanguageSwitch'
 import { useEntranceAnimation } from '~/lib/useScrollReveal'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { ShareSheet, type ShareTarget } from './ShareSheet'
-import { buildAppLink, buildShareableAppUrl, buildMerchantTelegramLink } from '~/lib/telegram-links'
+import { buildAppLink, buildShareableAppUrl, buildMerchantTelegramLink, type TelegramLinkConfig } from '~/lib/telegram-links'
 import { buildMerchantWhatsAppLink } from '~/lib/whatsapp-links'
+import { PhoneIcon, PinIcon } from './Icons'
 
-export function StorefrontHeader({ store, isOwner }: { store: PublicStore; isOwner: boolean }) {
+export function StorefrontHeader({
+  store,
+  isOwner,
+  telegramConfig,
+  fbAppId,
+}: {
+  store: PublicStore
+  isOwner: boolean
+  telegramConfig: TelegramLinkConfig | null
+  fbAppId: string | null
+}) {
   const bannerRef = useEntranceAnimation<HTMLDivElement>(
     { opacity: 0, y: -16 },
     { opacity: 1, y: 0, duration: 0.5 },
@@ -21,8 +32,13 @@ export function StorefrontHeader({ store, isOwner }: { store: PublicStore; isOwn
   const wilayaName = locale === 'ar' ? store.wilayaNameAr : store.wilayaNameFr
   const locationText = [communeName, wilayaName].filter(Boolean).join(', ')
 
+  // Telegram share is only offered when the deploy actually has the
+  // required config — see the build-time/runtime env var caveat in
+  // src/lib/telegram-links.ts. Falls back to just the external share URL
+  // (still works fine — that landing page redirects to Telegram itself
+  // once config exists) rather than crashing this component.
   const appShareTarget: ShareTarget = {
-    telegramUrl: buildAppLink(),
+    telegramUrl: telegramConfig ? buildAppLink(telegramConfig) : undefined,
     externalUrl: buildShareableAppUrl(typeof window !== 'undefined' ? window.location.origin : ''),
     title: t.appName,
     text: t.share.defaultShareText,
@@ -46,7 +62,13 @@ export function StorefrontHeader({ store, isOwner }: { store: PublicStore; isOwn
             />
           )}
           <div className="min-w-0">
-            <h1 className="font-bold text-[var(--color-text-primary)] truncate">{store.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-bold text-[var(--color-text-primary)] truncate">{store.name}</h1>
+              <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-[var(--color-success)]/15 px-1.5 py-0.5 text-[9px] font-bold text-[var(--color-success)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
+                {t.activeShopBadge}
+              </span>
+            </div>
             {store.description && (
               <p className="text-xs text-[var(--color-text-muted)] truncate">{store.description}</p>
             )}
@@ -132,26 +154,11 @@ export function StorefrontHeader({ store, isOwner }: { store: PublicStore; isOwn
         </div>
       )}
 
-      <ShareSheet target={appShareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
+      <ShareSheet target={appShareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} fbAppId={fbAppId} />
     </header>
   )
 }
 
-function PhoneIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
-    </svg>
-  )
-}
 
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="M12 21s7-6.5 7-11.5a7 7 0 0 0-14 0C5 14.5 12 21 12 21z" />
-      <circle cx="12" cy="9.5" r="2.5" />
-    </svg>
-  )
-}
 
 

@@ -13,6 +13,7 @@ import { getWilayas, getCommunesByWilaya, type CommuneRow } from '~/server/wilay
 import { uploadToPresignedUrl, resizeImageToJpeg } from '~/lib/upload'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import type { MerchantDictionary } from '~/lib/i18n/translations'
+import { THEME_PRESETS } from '~/lib/store-themes'
 
 export const Route = createFileRoute('/_authenticated/store-settings')({
   loader: async () => {
@@ -48,6 +49,7 @@ function StoreSettingsPage() {
       </h1>
 
       <StoreProfileSection store={store} wilayas={wilayas} m={t.merchant} />
+      <AppearanceSection store={store} m={t.merchant} />
       <WhatsAppContactSection merchant={merchant} m={t.merchant} />
       <PhoneVisibilitySection merchant={merchant} m={t.merchant} />
       <DeliveryZonesSection storeId={store.id} zones={zones} wilayas={wilayas} m={t.merchant} />
@@ -122,6 +124,70 @@ function WhatsAppContactSection({
 // "visible with no number" is never a reachable state from this UI. The
 // server enforces the same rule independently either way (see
 // updateMyPhoneVisibility in src/server/auth.ts).
+// ---------- Storefront appearance (curated color theme) ----------
+//
+// A merchant picks one of a small set of pre-made color themes for their
+// own store (see THEME_PRESETS in src/lib/store-themes.ts) — never a
+// free-form color picker, so every combination stays legible. The chosen
+// theme only affects THIS merchant's own storefront pages (see
+// StorefrontThemeProvider), never the marketplace homepage or any other
+// store.
+function AppearanceSection({ store, m }: { store: NonNullable<Awaited<ReturnType<typeof getMyStore>>>; m: MerchantDictionary }) {
+  const updateStore = useServerFn(updateMyStore)
+  const [themeId, setThemeId] = useState(store.themeId ?? 'default')
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const { locale } = useLocale()
+
+  async function handleSelect(newThemeId: string) {
+    setThemeId(newThemeId)
+    setError(null)
+    setSaved(false)
+    setIsSaving(true)
+    try {
+      await updateStore({ data: { themeId: newThemeId } })
+      setSaved(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'enregistrement")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-[var(--color-surface)] p-4 shadow-sm">
+      <h2 className="text-sm font-bold text-[var(--color-text-primary)] mb-1">{m.storeAppearance}</h2>
+      <p className="text-xs text-[var(--color-text-muted)] mb-3">{m.storeAppearanceHint}</p>
+
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {THEME_PRESETS.map((theme) => (
+          <button
+            key={theme.id}
+            type="button"
+            onClick={() => handleSelect(theme.id)}
+            disabled={isSaving}
+            className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 disabled:opacity-50 ${
+              themeId === theme.id ? 'border-[var(--color-text-primary)]' : 'border-transparent'
+            }`}
+          >
+            <span className="flex h-8 w-8 overflow-hidden rounded-full border border-[var(--color-border)]">
+              <span className="h-full w-1/2" style={{ backgroundColor: theme.actionPrimary }} />
+              <span className="h-full w-1/2" style={{ backgroundColor: theme.accent }} />
+            </span>
+            <span className="text-[10px] font-medium text-[var(--color-text-primary)] text-center leading-tight">
+              {locale === 'ar' ? theme.labelAr : theme.labelFr}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="text-sm text-[var(--color-danger)] mb-1">{error}</p>}
+      {saved && !error && !isSaving && <p className="text-sm text-[var(--color-success)]">{m.saved}</p>}
+    </div>
+  )
+}
+
 function PhoneVisibilitySection({
   merchant,
   m,
@@ -345,18 +411,24 @@ function StoreProfileSection({
         {m.storeWilaya}
       </label>
       <p className="text-xs text-[var(--color-text-muted)] mb-1">{m.storeWilayaHint}</p>
-      <select
-        value={baseWilayaCode ?? ''}
-        onChange={(e) => setBaseWilayaCode(e.target.value ? Number(e.target.value) : null)}
-        className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 mb-4"
-      >
-        <option value="">{m.storeWilayaPlaceholder}</option>
-        {wilayas.map((w) => (
-          <option key={w.code} value={w.code}>
-            {w.code.toString().padStart(2, '0')} — {locale === 'ar' ? w.nameAr : w.nameFr}
-          </option>
-        ))}
-      </select>
+      {wilayas.length === 0 ? (
+        <p className="mb-4 rounded-lg bg-[var(--color-danger)]/10 px-3 py-2 text-xs text-[var(--color-danger)]">
+          {m.wilayaListUnavailable}
+        </p>
+      ) : (
+        <select
+          value={baseWilayaCode ?? ''}
+          onChange={(e) => setBaseWilayaCode(e.target.value ? Number(e.target.value) : null)}
+          className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 mb-4"
+        >
+          <option value="">{m.storeWilayaPlaceholder}</option>
+          {wilayas.map((w) => (
+            <option key={w.code} value={w.code}>
+              {w.code.toString().padStart(2, '0')} — {locale === 'ar' ? w.nameAr : w.nameFr}
+            </option>
+          ))}
+        </select>
+      )}
 
       <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
         {m.storeCommune}
@@ -546,6 +618,9 @@ function DeliveryZonesSection({
       </p>
 
       <div className="max-h-96 overflow-y-auto divide-y divide-[var(--color-border)]">
+        {wilayas.length === 0 && (
+          <p className="py-4 text-center text-xs text-[var(--color-danger)]">{m.wilayaListUnavailable}</p>
+        )}
         {wilayas.map((w) => (
           <div key={w.code} className="flex items-center gap-3 py-2">
             <input

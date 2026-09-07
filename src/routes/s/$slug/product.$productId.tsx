@@ -24,7 +24,7 @@ export const Route = createFileRoute('/s/$slug/product/$productId')({
 })
 
 function ProductDetailPage() {
-  const { store } = parentRoute.useLoaderData()
+  const { store, telegramConfig, fbAppId } = parentRoute.useLoaderData()
   const { product, related } = Route.useLoaderData()
   const params = Route.useParams()
   const cart = useCart()
@@ -191,7 +191,16 @@ function ProductDetailPage() {
             <h2 className="font-semibold text-[var(--color-text-primary)] mb-3">
               {t.youMayAlsoLike}
             </h2>
-            <ProductGrid products={related} storeSlug={params.slug} variant={variant} />
+            <ProductGrid
+              products={related}
+              storeSlug={params.slug}
+              variant={variant}
+              telegramConfig={telegramConfig}
+              fbAppId={fbAppId}
+              storeName={store.name}
+              merchantWhatsappNumber={store.merchantWhatsappNumber}
+              merchantTelegramUsername={store.merchantTelegramUsername}
+            />
           </div>
         )}
       </div>

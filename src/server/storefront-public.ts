@@ -24,6 +24,7 @@ export interface PublicStore {
   merchantWhatsappNumber: string | null
   merchantPhone: string | null
   googleMapsUrl: string | null
+  themeId: string | null
   wilayaNameAr: string | null
   wilayaNameFr: string | null
   communeNameAr: string | null
@@ -52,6 +53,7 @@ export const getPublicStoreBySlug = createServerFn({ method: 'GET' })
         m.whatsapp_number AS merchant_whatsapp_number,
         CASE WHEN m.phone_visible_in_storefront THEN m.phone ELSE NULL END AS merchant_phone,
         s.google_maps_url,
+        s.theme_id,
         w.name_ar AS wilaya_name_ar, w.name_fr AS wilaya_name_fr,
         cm.name_ar AS commune_name_ar, cm.name_fr AS commune_name_fr
       FROM stores s

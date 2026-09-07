@@ -6,7 +6,13 @@ import { useCart } from './CartContext'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
 import { ShareSheet, type ShareTarget } from './ShareSheet'
-import { buildProductTelegramLink, buildShareableProductUrl } from '~/lib/telegram-links'
+import {
+  buildProductTelegramLink,
+  buildShareableProductUrl,
+  buildMerchantTelegramLink,
+  type TelegramLinkConfig,
+} from '~/lib/telegram-links'
+import { buildMerchantWhatsAppLink } from '~/lib/whatsapp-links'
 
 const PLACEHOLDER_SWATCH_COLORS = ['#c1502e', '#3b2417', '#e8a33d', '#8a8a8a']
 
@@ -21,11 +27,27 @@ export function ProductCard({
   storeSlug,
   variant,
   listView = false,
+  telegramConfig,
+  fbAppId,
+  storeName,
+  merchantWhatsappNumber,
+  merchantTelegramUsername,
 }: {
   product: PublicProductCard
   storeSlug: string
   variant: StoreLayoutVariant
   listView?: boolean
+  telegramConfig: TelegramLinkConfig | null
+  fbAppId: string | null
+  /** Merchant's own contact channels — for the "Negotiate" button, distinct
+   * from telegramConfig above (which is AlgerBot's own bot/Mini App config,
+   * used for the "share this product" flow, not for contacting the merchant
+   * directly). Only appears on store-page product cards (never the
+   * marketplace homepage, which uses its own separate card markup) since
+   * that's the only place ProductCard is ever rendered. */
+  storeName: string
+  merchantWhatsappNumber: string | null
+  merchantTelegramUsername: string | null
 }) {
   const cart = useCart()
   const [quantity, setQuantity] = useState(0)
@@ -36,12 +58,57 @@ export function ProductCard({
   // the call site in ProductGrid), so there is no shared/stale state
   // between cards here even though every card renders the same JSX.
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isNegotiateOpen, setIsNegotiateOpen] = useState(false)
+
+  const hasWhatsapp = Boolean(merchantWhatsappNumber)
+  const hasTelegram = Boolean(merchantTelegramUsername)
+
+  // The message links to THIS product's dedicated share page
+  // (/share/product/$id), not a raw image URL — that page already has a
+  // real og:image tag (see src/routes/share/product/$productId.tsx), so
+  // WhatsApp/Telegram render an actual photo preview card once this link
+  // is sent. Neither wa.me nor t.me links can pre-attach a real image
+  // file to the outgoing message (confirmed: no such capability exists
+  // on either platform) — this is the closest real equivalent, an
+  // auto-generated visual preview rather than a raw attachment.
+  function buildNegotiateMessage(): string {
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/share/product/${product.id}`
+        : `/share/product/${product.id}`
+    return `${t.negotiateMessagePrefix} "${product.name}" (${formatDzd(product.priceCentimes, locale)}) — ${storeName}\n${shareUrl}`
+  }
+
+  function handleNegotiateWhatsApp() {
+    if (!merchantWhatsappNumber) return
+    window.open(buildMerchantWhatsAppLink(merchantWhatsappNumber, buildNegotiateMessage()), '_blank', 'noopener,noreferrer')
+    setIsNegotiateOpen(false)
+  }
+
+  function handleNegotiateTelegram() {
+    if (!merchantTelegramUsername) return
+    // Telegram's official documented "prefill + share picker" pattern is
+    // t.me/share/url?url=...&text=... (used elsewhere in this app, see
+    // ShareSheet.tsx's handleTelegramShare) — that opens a chat PICKER,
+    // not a specific person's chat directly. For a direct personal chat
+    // like this one, some tools claim t.me/<username>?text=... prefills
+    // the message too, but this isn't confirmed in Telegram's own
+    // documented special links, so it isn't relied on here — this opens
+    // the direct chat with the merchant (which reliably works), and the
+    // buyer sends the product reference themselves once it's open.
+    window.open(buildMerchantTelegramLink(merchantTelegramUsername), '_blank', 'noopener,noreferrer')
+    setIsNegotiateOpen(false)
+  }
 
   const isOutOfStock = product.totalStock <= 0
   const isNew = Date.now() - new Date(product.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000
 
   const shareTarget: ShareTarget = {
-    telegramUrl: buildProductTelegramLink(product.id),
+    // Absent when TELEGRAM_BOT_USERNAME/TELEGRAM_MINIAPP_SHORT_NAME
+    // aren't configured on this deployment — ShareSheet hides the
+    // Telegram-native option in that case rather than building a broken
+    // link (see the build-time/runtime env var caveat in telegram-links.ts).
+    telegramUrl: telegramConfig ? buildProductTelegramLink(telegramConfig, product.id) : undefined,
     // window is unavailable during SSR; the share button that uses this
     // only becomes interactive client-side (React hydration), so this
     // falls back to an empty string during the server render and is
@@ -155,6 +222,48 @@ export function ProductCard({
           {formatDzd(product.priceCentimes, locale)}
         </p>
 
+        {/* "Negotiate" — only rendered when the merchant has at least one
+            contact channel configured, and only ever reachable from a
+            store page (ProductCard is never used on the marketplace
+            homepage, which has its own separate card markup — see
+            src/routes/index.tsx). Opens a small in-page channel picker;
+            picking one hands off to the real WhatsApp/Telegram app with
+            a message linking to this product's share page, which carries
+            a real photo preview once sent (see buildNegotiateMessage). */}
+        {(hasWhatsapp || hasTelegram) && (
+          <div className="relative mt-1.5" onClick={(e) => e.preventDefault()}>
+            <button
+              type="button"
+              onClick={() => setIsNegotiateOpen((v) => !v)}
+              className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-semibold text-[var(--color-text-primary)]"
+            >
+              {t.negotiateButton}
+            </button>
+            {isNegotiateOpen && (
+              <div className="absolute z-30 mt-1 flex flex-col gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-lg">
+                {hasWhatsapp && (
+                  <button
+                    type="button"
+                    onClick={handleNegotiateWhatsApp}
+                    className="whitespace-nowrap rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white text-start"
+                  >
+                    {t.visitMerchantWhatsApp}
+                  </button>
+                )}
+                {hasTelegram && (
+                  <button
+                    type="button"
+                    onClick={handleNegotiateTelegram}
+                    className="whitespace-nowrap rounded-lg bg-[#229ED9] px-3 py-1.5 text-xs font-semibold text-white text-start"
+                  >
+                    {t.visitMerchantTelegram}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* fashion: size/color swatches visible directly on the card */}
         {variant === 'fashion' && product.hasVariants && (
           <div className="flex gap-1 mt-1.5">
@@ -216,7 +325,7 @@ export function ProductCard({
         {cardContent}
       </Link>
 
-      <ShareSheet target={shareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} />
+      <ShareSheet target={shareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} fbAppId={fbAppId} />
     </>
   )
 }

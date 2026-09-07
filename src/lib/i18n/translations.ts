@@ -24,6 +24,10 @@ export interface TranslationDictionary {
   viewProduct: string
   manageMyStore: string
   viewOnMap: string
+  activeShopBadge: string
+  chatWidgetTitle: string
+  negotiateButton: string
+  negotiateMessagePrefix: string
   searchPlaceholder: string
   wilayaFilterAll: string
   communeFilterAll: string
@@ -145,11 +149,14 @@ export interface MerchantDictionary {
   storeWilaya: string
   storeWilayaHint: string
   storeWilayaPlaceholder: string
+  wilayaListUnavailable: string
   storeCommune: string
   storeCommunePlaceholder: string
   storeCommunePlaceholderNoWilaya: string
   storeGoogleMapsUrl: string
   storeGoogleMapsUrlHint: string
+  storeAppearance: string
+  storeAppearanceHint: string
   whatsappContact: string
   whatsappContactHint: string
   whatsappPlaceholder: string
@@ -341,6 +348,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
     viewProduct: 'عرض المنتج',
     manageMyStore: 'إدارة متجري',
     viewOnMap: 'عرض على الخريطة',
+    activeShopBadge: 'متجر نشط',
+    chatWidgetTitle: 'تواصل معنا',
+    negotiateButton: 'تفاوض على السعر',
+    negotiateMessagePrefix: 'مرحباً، أنا مهتم بالتفاوض على هذا المنتج:',
     searchPlaceholder: 'ابحث عن منتج...',
     wilayaFilterAll: 'كل الولايات',
     communeFilterAll: 'كل البلديات',
@@ -449,11 +460,14 @@ export const translations: Record<Locale, TranslationDictionary> = {
       storeWilaya: 'ولاية المتجر (الموقع الفعلي)',
       storeWilayaHint: 'اختر الولاية التي يتواجد فيها متجرك فعليًا. هذا مختلف عن مناطق التوصيل أدناه.',
       storeWilayaPlaceholder: '-- اختر الولاية --',
+      wilayaListUnavailable: 'تعذر تحميل قائمة الولايات. حاول تحديث الصفحة، أو تواصل مع الدعم إذا استمرت المشكلة.',
       storeCommune: 'بلدية المتجر (الموقع الفعلي)',
       storeCommunePlaceholder: '-- اختر البلدية --',
       storeCommunePlaceholderNoWilaya: 'اختر الولاية أولاً',
       storeGoogleMapsUrl: 'رابط خرائط جوجل (اختياري)',
       storeGoogleMapsUrlHint: 'الصق رابط موقع متجرك من زر "مشاركة" في تطبيق خرائط جوجل.',
+      storeAppearance: 'مظهر المتجر',
+      storeAppearanceHint: 'اختر ألوان متجرك. يؤثر هذا فقط على صفحة متجرك، وليس على الصفحة الرئيسية للسوق.',
       whatsappContact: 'رقم واتساب للتواصل',
       whatsappContactHint: 'يظهر للمشترين كزر "تواصل عبر واتساب" في صفحة متجرك. اتركه فارغًا لإخفاء الزر.',
       whatsappPlaceholder: 'مثال: 0555 12 34 56',
@@ -636,6 +650,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
     viewProduct: 'Voir le produit',
     manageMyStore: 'Gérer ma boutique',
     viewOnMap: 'Voir sur la carte',
+    activeShopBadge: 'Boutique active',
+    chatWidgetTitle: 'Discuter avec nous',
+    negotiateButton: 'Négocier le prix',
+    negotiateMessagePrefix: 'Bonjour, je suis intéressé(e) pour négocier ce produit :',
     searchPlaceholder: 'Rechercher un produit...',
     wilayaFilterAll: 'Toutes les wilayas',
     communeFilterAll: 'Toutes les communes',
@@ -744,11 +762,15 @@ export const translations: Record<Locale, TranslationDictionary> = {
       storeWilaya: 'Wilaya de la boutique (emplacement physique)',
       storeWilayaHint: 'Choisissez la wilaya où se trouve physiquement votre boutique. Différent des zones de livraison ci-dessous.',
       storeWilayaPlaceholder: '-- Choisir la wilaya --',
+      wilayaListUnavailable:
+        'Impossible de charger la liste des wilayas. Essayez de rafraîchir la page, ou contactez le support si le problème persiste.',
       storeCommune: 'Commune de la boutique (emplacement physique)',
       storeCommunePlaceholder: '-- Choisir la commune --',
       storeCommunePlaceholderNoWilaya: "Choisissez d'abord la wilaya",
       storeGoogleMapsUrl: 'Lien Google Maps (optionnel)',
       storeGoogleMapsUrlHint: 'Collez le lien de votre boutique depuis le bouton "Partager" de Google Maps.',
+      storeAppearance: 'Apparence de la boutique',
+      storeAppearanceHint: "Choisissez les couleurs de votre boutique. Cela n'affecte que votre page boutique, pas la page d'accueil du marché.",
       whatsappContact: 'Numéro WhatsApp de contact',
       whatsappContactHint:
         "Affiché aux acheteurs comme bouton \"Discuter sur WhatsApp\" sur la page de votre boutique. Laissez vide pour masquer le bouton.",

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware } from '~/lib/auth.server'
+import { merchantAuthMiddleware } from '~/lib/auth'
 import { fetchObjectBytes, putObjectBytes, deleteObject } from '~/lib/storage'
 import { removeBackgroundToWhite, BackgroundRemovalUnavailableError } from '~/lib/rembg'
 import { optimizeProductImage } from '~/lib/image-optimizer'

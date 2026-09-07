@@ -32,25 +32,27 @@
 //   visitors who do have Telegram. This is the "intermediary landing
 //   page" rich-preview requirements effectively require.
 
-function getBotUsername(): string {
-  const username = import.meta.env.VITE_TELEGRAM_BOT_USERNAME
-  if (!username) {
-    throw new Error('VITE_TELEGRAM_BOT_USERNAME is not configured')
-  }
-  return username.replace(/^@/, '')
-}
-
-function getMiniAppShortName(): string {
-  const shortName = import.meta.env.VITE_TELEGRAM_MINIAPP_SHORT_NAME
-  if (!shortName) {
-    throw new Error('VITE_TELEGRAM_MINIAPP_SHORT_NAME is not configured')
-  }
-  return shortName
+// PRODUCTION BUG FIX (same class as the TELEGRAM_BOT_USERNAME fix in
+// src/routes/login.tsx / src/server/auth.ts's getTelegramBotUsername):
+// these two functions used to read import.meta.env.VITE_TELEGRAM_* directly,
+// which Vite inlines at BUILD time. On platforms (Pivocloud included) that
+// inject env vars into the running container rather than the Docker build
+// step, that meant these values were baked in as empty/undefined at build
+// time and these functions threw on every call in production — silently
+// breaking the Telegram share flow, "visit our shop" links, and anything
+// else touching buildAppLink/buildProductTelegramLink. Fixed the same way
+// buildShareableProductUrl already handles `origin`: the caller supplies
+// the config explicitly (fetched server-side, at request time, via
+// getTelegramLinkConfig in src/server/auth.ts) rather than this file
+// reading an env var internally.
+export interface TelegramLinkConfig {
+  botUsername: string
+  miniAppShortName: string
 }
 
 /** The bare global store link: https://t.me/algerbot/store */
-export function buildAppLink(): string {
-  return `https://t.me/${getBotUsername()}/${getMiniAppShortName()}`
+export function buildAppLink(config: TelegramLinkConfig): string {
+  return `https://t.me/${config.botUsername.replace(/^@/, '')}/${config.miniAppShortName}`
 }
 
 /**
@@ -60,8 +62,8 @@ export function buildAppLink(): string {
  * Telegram from Telegram never has the "Telegram isn't installed"
  * problem, so the landing-page detour isn't needed there.
  */
-export function buildProductTelegramLink(productId: string): string {
-  return `${buildAppLink()}?startapp=${encodeURIComponent(productId)}`
+export function buildProductTelegramLink(config: TelegramLinkConfig, productId: string): string {
+  return `${buildAppLink(config)}?startapp=${encodeURIComponent(productId)}`
 }
 
 /**

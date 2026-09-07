@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getRequest, getRequestHeader } from '@tanstack/react-start/server'
 import { sql } from '~/lib/db'
 import { hashPassword, verifyPassword, sha256Hex, generateSessionToken } from '~/lib/crypto'
-import { issueSession, revokeCurrentSession, adminAuthMiddleware, getOptionalAdminSession } from '~/lib/auth.server'
+import { issueSession, revokeCurrentSession, adminAuthMiddleware, getOptionalAdminSession } from '~/lib/auth'
 import { authRateLimit, readRateLimit } from '~/lib/rate-limit'
 import { sendEmail } from '~/lib/email'
 

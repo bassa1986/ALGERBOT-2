@@ -1,0 +1,2 @@
+DROP TABLE whatsapp_otp_codes;
+DROP INDEX merchants_whatsapp_number_unique_idx;

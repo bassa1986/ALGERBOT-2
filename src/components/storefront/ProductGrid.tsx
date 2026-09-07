@@ -1,5 +1,6 @@
 import type { PublicProductCard } from '~/server/storefront-public'
 import type { StoreLayoutVariant } from '~/server/store'
+import type { TelegramLinkConfig } from '~/lib/telegram-links'
 import { ProductCard } from './ProductCard'
 import { useScrollReveal } from '~/lib/useScrollReveal'
 import { useLocale } from '~/lib/i18n/LocaleContext'
@@ -14,11 +15,21 @@ export function ProductGrid({
   storeSlug,
   variant,
   listView = false,
+  telegramConfig,
+  fbAppId,
+  storeName,
+  merchantWhatsappNumber,
+  merchantTelegramUsername,
 }: {
   products: PublicProductCard[]
   storeSlug: string
   variant: StoreLayoutVariant
   listView?: boolean
+  telegramConfig: TelegramLinkConfig | null
+  fbAppId: string | null
+  storeName: string
+  merchantWhatsappNumber: string | null
+  merchantTelegramUsername: string | null
 }) {
   const containerRef = useScrollReveal<HTMLDivElement>({
     selector: '.reveal-item',
@@ -38,7 +49,18 @@ export function ProductGrid({
     return (
       <div ref={containerRef} className="space-y-2">
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} storeSlug={storeSlug} variant={variant} listView />
+          <ProductCard
+            key={p.id}
+            product={p}
+            storeSlug={storeSlug}
+            variant={variant}
+            telegramConfig={telegramConfig}
+            fbAppId={fbAppId}
+            storeName={storeName}
+            merchantWhatsappNumber={merchantWhatsappNumber}
+            merchantTelegramUsername={merchantTelegramUsername}
+            listView
+          />
         ))}
       </div>
     )
@@ -58,7 +80,17 @@ export function ProductGrid({
   return (
     <div ref={containerRef} className={gridClass}>
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} storeSlug={storeSlug} variant={variant} />
+        <ProductCard
+          key={p.id}
+          product={p}
+          storeSlug={storeSlug}
+          variant={variant}
+          telegramConfig={telegramConfig}
+          fbAppId={fbAppId}
+          storeName={storeName}
+          merchantWhatsappNumber={merchantWhatsappNumber}
+          merchantTelegramUsername={merchantTelegramUsername}
+        />
       ))}
     </div>
   )

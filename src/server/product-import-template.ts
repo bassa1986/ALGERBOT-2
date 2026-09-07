@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import * as XLSX from 'xlsx'
-import { merchantAuthMiddleware } from '~/lib/auth.server'
+import { merchantAuthMiddleware } from '~/lib/auth'
 import { sql } from '~/lib/db'
 import { readRateLimit } from '~/lib/rate-limit'
 

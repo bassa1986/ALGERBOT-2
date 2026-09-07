@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { getShareableProductSummary } from '~/server/storefront-public'
-import { buildProductTelegramLink } from '~/lib/telegram-links'
+import { buildProductTelegramLink, type TelegramLinkConfig } from '~/lib/telegram-links'
+import { getTelegramLinkConfig } from '~/server/auth'
 import { useLocale, LocaleProvider } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
 
@@ -24,8 +25,11 @@ import { formatDzd } from '~/lib/i18n/format'
  */
 export const Route = createFileRoute('/share/product/$productId')({
   loader: async ({ params }) => {
-    const product = await getShareableProductSummary({ data: { productId: params.productId } })
-    return { product }
+    const [product, telegramConfig] = await Promise.all([
+      getShareableProductSummary({ data: { productId: params.productId } }),
+      getTelegramLinkConfig(),
+    ])
+    return { product, telegramConfig }
   },
   head: ({ loaderData }) => {
     const product = loaderData?.product
@@ -67,22 +71,22 @@ export const Route = createFileRoute('/share/product/$productId')({
 })
 
 function ShareProductLandingPage() {
-  const { product } = Route.useLoaderData()
+  const { product, telegramConfig } = Route.useLoaderData()
   const { locale, t, dir } = useLocale()
   const [redirectAttempted, setRedirectAttempted] = useState(false)
 
   useEffect(() => {
-    if (!product) return
+    if (!product || !telegramConfig) return
     // Attempt the real Telegram deep link immediately. If Telegram is
     // installed, this either opens it directly or (on many mobile
     // browsers) triggers the OS's "open in app" prompt. If nothing
     // handles it, the visitor stays on this page - which is why the
     // manual "Open in Telegram" / "Get Telegram" buttons below are always
     // rendered too, not only as a delayed fallback.
-    const telegramUrl = buildProductTelegramLink(product.id)
+    const telegramUrl = buildProductTelegramLink(telegramConfig, product.id)
     window.location.href = telegramUrl
     setRedirectAttempted(true)
-  }, [product])
+  }, [product, telegramConfig])
 
   if (!product) {
     return (
@@ -94,7 +98,7 @@ function ShareProductLandingPage() {
     )
   }
 
-  const telegramUrl = buildProductTelegramLink(product.id)
+  const telegramUrl = telegramConfig ? buildProductTelegramLink(telegramConfig, product.id) : null
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-muted)] flex items-center justify-center p-4" dir={dir}>
@@ -113,12 +117,18 @@ function ShareProductLandingPage() {
 
         <p className="mb-4 text-xs text-[var(--color-text-muted)]">{t.share.landingIntro}</p>
 
-        <a
-          href={telegramUrl}
-          className="mb-2 block rounded-full bg-[var(--color-action-primary)] px-4 py-3 text-sm font-semibold text-white"
-        >
-          {t.share.openInTelegram}
-        </a>
+        {telegramUrl ? (
+          <a
+            href={telegramUrl}
+            className="mb-2 block rounded-full bg-[var(--color-action-primary)] px-4 py-3 text-sm font-semibold text-white"
+          >
+            {t.share.openInTelegram}
+          </a>
+        ) : (
+          <p className="mb-2 text-xs text-[var(--color-danger)]">
+            Configuration manquante : impossible de générer le lien Telegram.
+          </p>
+        )}
 
         <a
           href="https://telegram.org/dl"

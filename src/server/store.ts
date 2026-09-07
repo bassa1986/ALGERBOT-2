@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth.server'
+import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
 import { mutationRateLimit, readRateLimit, publicRateLimit } from '~/lib/rate-limit'
+import { THEME_IDS } from '~/lib/store-themes'
 
 export type StoreLayoutVariant = 'general' | 'fashion' | 'grocery' | 'electronics' | 'furniture'
 
@@ -16,6 +17,7 @@ export interface StoreRow {
   baseWilayaCode: number | null
   baseCommuneCode: number | null
   googleMapsUrl: string | null
+  themeId: string | null
   isPublished: boolean
   layoutVariant: StoreLayoutVariant
 }
@@ -25,7 +27,7 @@ export const getMyStore = createServerFn({ method: 'GET' })
   .handler(async ({ context }): Promise<StoreRow | null> => {
     const rows = await sql<StoreRow[]>`
       SELECT id, slug, name, description, logo_url, banner_url, base_wilaya_code, base_commune_code,
-             google_maps_url, is_published, layout_variant
+             google_maps_url, theme_id, is_published, layout_variant
       FROM stores
       WHERE merchant_id = ${context.merchantId}
     `
@@ -133,6 +135,10 @@ const updateStoreSchema = z.object({
   // g.co/kgs/...), and rejecting a legitimate one a merchant pasted would
   // be worse than accepting any well-formed URL here.
   googleMapsUrl: z.string().url().max(500).nullable().optional(),
+  // Restricted to the curated preset ids (src/lib/store-themes.ts), never
+  // a free-form string — a merchant can only pick one of the pre-made
+  // themes, never inject an arbitrary value into this column.
+  themeId: z.enum(THEME_IDS).nullable().optional(),
   isPublished: z.boolean().optional(),
   layoutVariant: z.enum(['general', 'fashion', 'grocery', 'electronics', 'furniture']).optional(),
 })
@@ -185,12 +191,13 @@ export const updateMyStore = createServerFn({ method: 'POST' })
         base_wilaya_code = CASE WHEN ${data.baseWilayaCode !== undefined} THEN ${data.baseWilayaCode ?? null} ELSE base_wilaya_code END,
         base_commune_code = ${resultingCommuneCode},
         google_maps_url = CASE WHEN ${data.googleMapsUrl !== undefined} THEN ${data.googleMapsUrl ?? null} ELSE google_maps_url END,
+        theme_id = CASE WHEN ${data.themeId !== undefined} THEN ${data.themeId ?? null} ELSE theme_id END,
         is_published = COALESCE(${data.isPublished ?? null}, is_published),
         layout_variant = COALESCE(${data.layoutVariant ?? null}, layout_variant),
         updated_at = now()
       WHERE id = ${existing.id}
       RETURNING id, slug, name, description, logo_url, banner_url, base_wilaya_code, base_commune_code,
-                google_maps_url, is_published, layout_variant
+                google_maps_url, theme_id, is_published, layout_variant
     `
     return rows[0]
   })

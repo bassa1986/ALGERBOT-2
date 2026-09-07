@@ -49,7 +49,7 @@ export function CategoryNav({
     // Icon bar: horizontal scroll of icon + short label, grocery's
     // signature "browse by department" pattern.
     return (
-      <div className="flex gap-3 overflow-x-auto px-4 py-3 -mx-4">
+      <div className="sticky top-0 z-20 flex gap-3 overflow-x-auto bg-[var(--color-surface-muted)] px-4 py-3 -mx-4 shadow-sm">
         <button
           onClick={() => onSelect(undefined)}
           className={`flex flex-col items-center gap-1 shrink-0 ${
@@ -87,7 +87,7 @@ export function CategoryNav({
 
   // Default: filter chips, used by general/fashion/electronics/furniture.
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 py-3 -mx-4">
+    <div className="sticky top-0 z-20 flex gap-2 overflow-x-auto bg-[var(--color-surface-muted)] px-4 py-3 -mx-4 shadow-sm">
       <button
         onClick={() => onSelect(undefined)}
         className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
