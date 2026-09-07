@@ -5,7 +5,7 @@ import {
   presignPrivateProofUpload,
   StorageValidationError,
 } from '~/lib/storage'
-import { merchantAuthMiddleware } from '~/lib/auth'
+import { merchantAuthMiddleware } from '~/lib/auth.server'
 import { uploadRateLimit } from '~/lib/rate-limit'
 
 // These server functions are the only way client code obtains a presigned

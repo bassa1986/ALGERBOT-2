@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware } from '~/lib/auth'
+import { merchantAuthMiddleware } from '~/lib/auth.server'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
 async function getOwnedStoreId(merchantId: string): Promise<string> {

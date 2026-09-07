@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { adminAuthMiddleware } from '~/lib/auth'
+import { adminAuthMiddleware } from '~/lib/auth.server'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 

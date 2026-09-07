@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import * as XLSX from 'xlsx'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware } from '~/lib/auth'
+import { merchantAuthMiddleware } from '~/lib/auth.server'
 import { mutationRateLimit } from '~/lib/rate-limit'
 
 // ---------- Row-level validation ----------

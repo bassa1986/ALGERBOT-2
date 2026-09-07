@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware, adminAuthMiddleware } from '~/lib/auth'
+import { merchantAuthMiddleware, adminAuthMiddleware } from '~/lib/auth.server'
 import { presignPrivateProofUpload, presignPrivateGet, StorageValidationError } from '~/lib/storage'
 import { mutationRateLimit, readRateLimit, uploadRateLimit } from '~/lib/rate-limit'
 

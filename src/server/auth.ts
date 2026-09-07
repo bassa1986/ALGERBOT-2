@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { getRequestHeader } from '@tanstack/react-start/server'
 import { sql } from '~/lib/db'
 import { verifyLoginWidgetPayload, verifyWebAppInitData } from '~/lib/telegram'
-import { issueSession, revokeCurrentSession, merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
+import { issueSession, revokeCurrentSession, merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth.server'
 import { authRateLimit, readRateLimit, mutationRateLimit } from '~/lib/rate-limit'
 
 interface MerchantRow {

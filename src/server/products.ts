@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware } from '~/lib/auth'
+import { merchantAuthMiddleware } from '~/lib/auth.server'
 import { assertWithinQuota } from '~/lib/quota'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 

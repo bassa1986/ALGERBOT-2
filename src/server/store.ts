@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
+import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth.server'
 import { mutationRateLimit, readRateLimit, publicRateLimit } from '~/lib/rate-limit'
 
 export type StoreLayoutVariant = 'general' | 'fashion' | 'grocery' | 'electronics' | 'furniture'
