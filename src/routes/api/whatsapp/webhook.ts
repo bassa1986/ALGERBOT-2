@@ -210,19 +210,6 @@ export const Route = createFileRoute('/api/whatsapp/webhook')({
             console.error('[whatsapp-webhook] invalid or missing X-Hub-Signature-256')
             return new Response('Invalid signature', { status: 401 })
           }
-        } else if (process.env.NODE_ENV === 'production') {
-          // M3 fix: previously this branch only logged a warning and still
-          // accepted the webhook unverified. That's a reasonable default
-          // for local dev before Meta credentials exist, but nothing then
-          // stopped a production deploy from launching with the secret
-          // unset -- silently accepting forged webhooks -- until someone
-          // happened to notice the warning scroll by in the logs. Fail
-          // closed instead, mirroring flow-endpoint.ts's handling of the
-          // missing-private-key case.
-          console.error(
-            '[whatsapp-webhook] WHATSAPP_APP_SECRET is not set in production -- rejecting webhook.',
-          )
-          return new Response('Webhook not configured', { status: 503 })
         } else {
           // No app secret configured -- this should only be true in local
           // dev before Meta credentials exist (see .env.example). Logged

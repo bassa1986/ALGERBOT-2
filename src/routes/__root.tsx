@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Outlet,
   createRootRoute,
@@ -38,7 +38,78 @@ export const Route = createRootRoute({
       </div>
     </div>
   ),
+  errorComponent: RootErrorComponent,
 })
+
+/**
+ * Replaces the router's bare default error boundary (literally titled
+ * "Something went wrong!" with a raw "Show Error" toggle) with copy a real
+ * customer can act on. In particular, publicRateLimit (15 req/min per IP —
+ * see src/lib/rate-limit.ts) throws a plain `Error('Too many requests...')`
+ * from any public storefront server function, and that was previously
+ * surfacing as an indistinguishable hard crash instead of "please wait a
+ * moment" — a normal, expected condition (a customer's phone retrying a
+ * flaky request, or several tabs open) shouldn't look identical to an
+ * actual bug.
+ */
+function RootErrorComponent({ error, reset }: { error: unknown; reset?: () => void }) {
+  const message = error instanceof Error ? error.message : String(error)
+  const isRateLimited = message.toLowerCase().includes('too many requests')
+  const [showDetails, setShowDetails] = useState(false)
+
+  const retry = () => {
+    if (reset) reset()
+    else window.location.reload()
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--color-surface-muted)] flex items-center justify-center p-4">
+      <div className="text-center max-w-sm">
+        <p className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">
+          {isRateLimited ? 'Un instant…' : 'Une erreur est survenue'}
+        </p>
+        <p className="text-sm text-[var(--color-text-muted)] mb-4">
+          {isRateLimited ? (
+            <>
+              Trop de requêtes en peu de temps. Merci de patienter quelques secondes puis réessayer.
+              <br />
+              الرجاء الانتظار قليلاً ثم إعادة المحاولة
+            </>
+          ) : (
+            <>
+              Veuillez réessayer ou recharger la page.
+              <br />
+              يرجى إعادة المحاولة أو تحديث الصفحة
+            </>
+          )}
+        </p>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={retry}
+            className="px-4 py-2 rounded-md bg-[var(--color-action-primary)] text-white text-sm font-medium"
+          >
+            Réessayer
+          </button>
+          {!isRateLimited && (
+            <button
+              type="button"
+              onClick={() => setShowDetails((v) => !v)}
+              className="px-4 py-2 rounded-md border border-[var(--color-border)] text-sm text-[var(--color-text-muted)]"
+            >
+              {showDetails ? 'Masquer les détails' : 'Afficher les détails'}
+            </button>
+          )}
+        </div>
+        {showDetails && !isRateLimited && (
+          <pre className="mt-4 text-left text-xs text-[var(--color-text-muted)] bg-[var(--color-surface)] p-3 rounded-md overflow-auto max-h-64 whitespace-pre-wrap break-words">
+            {message}
+          </pre>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function RootComponent() {
   return (

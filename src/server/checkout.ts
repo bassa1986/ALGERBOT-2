@@ -27,29 +27,6 @@ const checkoutItemSchema = z.object({
   quantity: z.number().int().min(1).max(99),
 })
 
-// H5 fix: this used to only validate the web checkout path (via
-// checkoutSchema, applied by submitCheckout below). The WhatsApp Flow path
-// (handleFlowCompletion -> createOrder) passed session.state fields
-// straight through with bare `as string` casts and no runtime validation,
-// and the orders table has no CHECK constraints on these TEXT columns
-// either — so a modified/instrumented WhatsApp client could submit
-// arbitrarily long or malformed buyer fields, bypassing every bound the UI
-// and this schema assume hold everywhere (which also widens H4, since that
-// path would then have no length cap at all going into the xlsx export).
-// Validating here, inside createOrder() itself, means both callers get the
-// same guarantee regardless of whether they remember to wrap it.
-const createOrderInputSchema = z.object({
-  storeSlug: z.string().min(1).max(120),
-  items: z.array(checkoutItemSchema).min(1).max(50),
-  buyerName: z.string().min(2).max(120),
-  buyerPhone: z.string().min(8).max(20),
-  buyerWilayaCode: z.number().int().min(1).max(69),
-  buyerCommune: z.string().min(1).max(120),
-  buyerAddress: z.string().min(3).max(500),
-  buyerNotes: z.string().max(1000).optional(),
-  sourceChannel: z.enum(['web', 'whatsapp']),
-})
-
 const checkoutSchema = z.object({
   storeSlug: z.string().min(1).max(120),
   items: z.array(checkoutItemSchema).min(1).max(50),
@@ -92,14 +69,7 @@ export interface CreateOrderResult {
  * order-placing surface should call this too, rather than re-deriving
  * prices/stock itself.
  */
-export async function createOrder(rawData: CreateOrderInput): Promise<CreateOrderResult> {
-  // Validated unconditionally, regardless of caller — see H5 fix note above.
-  const parsed = createOrderInputSchema.safeParse(rawData)
-  if (!parsed.success) {
-    throw new Error('Données de commande invalides')
-  }
-  const data = parsed.data
-
+export async function createOrder(data: CreateOrderInput): Promise<CreateOrderResult> {
   const storeRows = await sql<{ id: string }[]>`
     SELECT s.id FROM stores s
     JOIN merchants m ON m.id = s.merchant_id

@@ -2,11 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
 import { merchantAuthMiddleware } from '~/lib/auth'
-import { fetchObjectBytes, putObjectBytes, deleteObject, verifyUploadedObject } from '~/lib/storage'
-import { IMAGE_MAX_UPLOAD_BYTES } from '~/lib/plans'
+import { fetchObjectBytes, putObjectBytes, deleteObject } from '~/lib/storage'
 import { removeBackgroundToWhite, BackgroundRemovalUnavailableError } from '~/lib/rembg'
 import { optimizeProductImage } from '~/lib/image-optimizer'
-import { reserveStorageQuota, adjustStorageUsage } from '~/lib/quota'
+import { assertWithinQuota, adjustStorageUsage } from '~/lib/quota'
 import { mutationRateLimit } from '~/lib/rate-limit'
 
 const MAX_IMAGES_PER_PRODUCT = 6
@@ -67,33 +66,6 @@ export const confirmProductImageUpload = createServerFn({ method: 'POST' })
   .handler(async ({ context, data }) => {
     await assertProductOwnership(data.productId, context.merchantId)
 
-    // H1 fix: the storage key is client-supplied and every product image
-    // URL is public, so without this check any authenticated merchant could
-    // pass a competitor's storageKey here for one of their OWN products —
-    // this handler would then fetch, re-encode, and overwrite that
-    // competitor's live image in place, and a later delete of the attacker's
-    // own product image would permanently delete the competitor's original
-    // object from Adex. Requiring the key to live under this product's own
-    // namespace closes that off; requestProductImageUpload is the only
-    // place that mints keys under products/${productId}/, and it always
-    // uses the productId passed to IT, so this also transitively confirms
-    // the key was actually issued for this product.
-    const expectedPrefix = `products/${data.productId}/`
-    if (!data.storageKey.startsWith(expectedPrefix)) {
-      throw new Error('Clé de stockage invalide')
-    }
-
-    // H2 fix: the presigned PUT URL only advises a mimeType/size at request
-    // time — nothing stops the actual bytes uploaded from being something
-    // else entirely. Verify the real content (magic bytes) and real size
-    // before doing anything else with this object; a mismatch deletes it
-    // and aborts the confirm.
-    await verifyUploadedObject(
-      data.storageKey,
-      ['image/jpeg', 'image/png', 'image/webp'],
-      IMAGE_MAX_UPLOAD_BYTES,
-    )
-
     // Runs before the DB insert, at the SAME storage key/URL — so whether
     // or not background removal actually happens, the row we're about to
     // write is already correct either way.
@@ -108,18 +80,9 @@ export const confirmProductImageUpload = createServerFn({ method: 'POST' })
     // 5,000 DZD app server, no dedicated image-processing server needed.
     const rawBytes = await fetchObjectBytes(data.storageKey)
     const { bytes: optimizedBytes, byteSize } = await optimizeProductImage(rawBytes)
-    // M5 fix: check-and-reserve is now atomic (row-locked) inside
-    // reserveStorageQuota — see its doc comment. If the Adex overwrite
-    // below fails after the reservation succeeded, the reservation is
-    // rolled back so the merchant's quota isn't permanently docked for
-    // bytes that were never actually persisted.
-    await reserveStorageQuota(context.merchantId, byteSize)
-    try {
-      await putObjectBytes(data.storageKey, optimizedBytes, 'image/webp')
-    } catch (err) {
-      await adjustStorageUsage(context.merchantId, -byteSize).catch(() => {})
-      throw err
-    }
+    await assertWithinQuota(context.merchantId, { additionalBytes: byteSize })
+    await putObjectBytes(data.storageKey, optimizedBytes, 'image/webp')
+    await adjustStorageUsage(context.merchantId, byteSize)
     // --- end addition ---
 
     return sql.begin(async (tx) => {

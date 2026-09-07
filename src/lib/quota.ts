@@ -78,53 +78,6 @@ export async function assertWithinQuota(
 }
 
 /**
- * Atomically checks the storage quota against the REAL current usage and
- * reserves `additionalBytes` against it, in one transaction with the
- * merchant row locked (SELECT ... FOR UPDATE) for the duration. Replaces
- * the previous assertWithinQuota(...) + adjustStorageUsage(...) pair used
- * for image uploads, which read-then-wrote with no lock in between — two
- * concurrent uploads from the same merchant could both pass the check
- * against the same starting value and both proceed, letting usage overshoot
- * the plan's cap (M5). If the caller's own follow-up work (e.g. the Adex
- * PUT) then fails, it should roll back with adjustStorageUsage(merchantId,
- * -additionalBytes).
- */
-export async function reserveStorageQuota(merchantId: string, additionalBytes: number): Promise<void> {
-  const subRows = await sql<{ currentPeriodExpiresAt: Date }[]>`
-    SELECT current_period_expires_at AS "currentPeriodExpiresAt"
-    FROM subscriptions WHERE merchant_id = ${merchantId}
-  `
-  const sub = subRows[0]
-  if (!sub || sub.currentPeriodExpiresAt.getTime() < Date.now()) {
-    throw new TrialExpiredError()
-  }
-
-  await sql.begin(async (tx) => {
-    const merchantRows = await tx<{ planId: string; currentStorageUsedBytes: number }[]>`
-      SELECT plan_id AS "planId", current_storage_used_bytes AS "currentStorageUsedBytes"
-      FROM merchants WHERE id = ${merchantId} FOR UPDATE
-    `
-    const merchant = merchantRows[0]
-    if (!merchant) throw new Error('Merchant not found')
-
-    const plan = await getPlanLimits(merchant.planId)
-
-    if (plan.storageLimitBytes !== null) {
-      const projectedUsage = merchant.currentStorageUsedBytes + additionalBytes
-      if (projectedUsage > plan.storageLimitBytes) {
-        throw new StorageQuotaExceededError(projectedUsage, plan.storageLimitBytes)
-      }
-    }
-
-    await tx`
-      UPDATE merchants
-      SET current_storage_used_bytes = GREATEST(0, current_storage_used_bytes + ${additionalBytes})
-      WHERE id = ${merchantId}
-    `
-  })
-}
-
-/**
  * Adjusts the merchant's running storage total. Pass a negative delta on
  * deletion. Safe to call even for plans with no storage limit — the
  * column is still tracked for all merchants (useful for admin visibility
