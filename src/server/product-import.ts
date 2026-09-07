@@ -32,7 +32,27 @@ interface ParseResult {
   categorySlugToId: Map<string, string>
 }
 
+// M7 fix: base64 payload had no .max(), and confirmSchema/previewSchema
+// were happy to accept and fully parse (via XLSX.read() + sheet_to_json())
+// arbitrarily large workbooks, synchronously, inside a request handler —
+// combined with mutationRateLimit's 30/min, a merchant (or a compromised
+// merchant session) could submit large workbooks repeatedly, holding a DB
+// connection through a long-lived transaction each time. This is a real
+// CPU/memory/DB-connection-hold DoS surface on an authenticated endpoint,
+// worse given H3's parser CVEs. ~10MB base64 comfortably covers a
+// realistic product catalog spreadsheet.
+const MAX_IMPORT_BASE64_BYTES = 15_000_000
+const MAX_IMPORT_ROWS = 5_000
+
 async function parseWorkbook(base64: string): Promise<ParseResult> {
+  if (base64.length > MAX_IMPORT_BASE64_BYTES) {
+    return {
+      validRows: [],
+      errors: [{ rowNumber: 0, message: 'Fichier trop volumineux (max ~10 Mo)' }],
+      categorySlugToId: new Map(),
+    }
+  }
+
   const wb = XLSX.read(base64, { type: 'base64' })
   const sheet = wb.Sheets['Produits'] ?? wb.Sheets[wb.SheetNames[0]]
   if (!sheet) {
@@ -43,7 +63,15 @@ async function parseWorkbook(base64: string): Promise<ParseResult> {
     }
   }
 
-  const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  const allRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  if (allRows.length > MAX_IMPORT_ROWS) {
+    return {
+      validRows: [],
+      errors: [{ rowNumber: 0, message: `Trop de lignes (max ${MAX_IMPORT_ROWS})` }],
+      categorySlugToId: new Map(),
+    }
+  }
+  const rows = allRows
 
   const categories = await sql<{ id: string; slug: string }[]>`SELECT id, slug FROM categories`
   const categorySlugToId = new Map(categories.map((c) => [c.slug, c.id]))
@@ -116,7 +144,7 @@ async function parseWorkbook(base64: string): Promise<ParseResult> {
 
 // ---------- Preview (parse + validate, no writes) ----------
 
-const previewSchema = z.object({ base64: z.string().min(1) })
+const previewSchema = z.object({ base64: z.string().min(1).max(MAX_IMPORT_BASE64_BYTES) })
 
 export const previewProductImport = createServerFn({ method: 'POST' })
   .middleware([merchantAuthMiddleware, mutationRateLimit])
@@ -136,7 +164,7 @@ export const previewProductImport = createServerFn({ method: 'POST' })
 
 // ---------- Confirm (re-parse + write, bulk upsert by SKU) ----------
 
-const confirmSchema = z.object({ base64: z.string().min(1) })
+const confirmSchema = z.object({ base64: z.string().min(1).max(MAX_IMPORT_BASE64_BYTES) })
 
 export const confirmProductImport = createServerFn({ method: 'POST' })
   .middleware([merchantAuthMiddleware, mutationRateLimit])

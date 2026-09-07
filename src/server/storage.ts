@@ -7,6 +7,7 @@ import {
 } from '~/lib/storage'
 import { merchantAuthMiddleware } from '~/lib/auth'
 import { uploadRateLimit } from '~/lib/rate-limit'
+import { sql } from '~/lib/db'
 
 // These server functions are the only way client code obtains a presigned
 // upload URL. Each one re-derives ownerId from the authenticated session
@@ -30,11 +31,22 @@ const requestProductImageUploadSchema = z.object({
 export const requestProductImageUpload = createServerFn({ method: 'POST' })
   .middleware([merchantAuthMiddleware, uploadRateLimit])
   .validator(requestProductImageUploadSchema)
-  .handler(async ({ data }) => {
-    // Ownership of productId is checked where the product row is fetched
-    // (confirmProductImageUpload in product-images.ts) — here we only
-    // namespace the storage key. That later step re-verifies the product
-    // belongs to this merchant's store before persisting the key.
+  .handler(async ({ context, data }) => {
+    // H1 fix: this used to defer ownership checking entirely to the later
+    // confirm step, but that meant any authenticated merchant could request
+    // (and receive) a valid presigned PUT URL namespaced under an arbitrary
+    // productId they don't own — confirmProductImageUpload's ownership
+    // check protects the DB row, but the presign step should never hand out
+    // a writable URL into another merchant's key namespace in the first
+    // place. Verify ownership here too.
+    const owned = await sql<{ id: string }[]>`
+      SELECT p.id FROM products p
+      JOIN stores s ON s.id = p.store_id
+      WHERE p.id = ${data.productId} AND s.merchant_id = ${context.merchantId}
+    `
+    if (owned.length === 0) {
+      return { ok: false as const, error: 'Produit introuvable' }
+    }
     try {
       const result = await presignPublicImageUpload({
         prefix: 'products',

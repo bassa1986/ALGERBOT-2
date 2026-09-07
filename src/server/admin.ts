@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
 import { adminAuthMiddleware } from '~/lib/auth'
+import { csrfMiddleware } from '~/server/admin-auth'
 import { sanitizeSearchInput } from '~/lib/sanitize'
 import { mutationRateLimit, readRateLimit } from '~/lib/rate-limit'
 
@@ -55,7 +56,7 @@ const setMerchantStatusSchema = z.object({
 })
 
 export const setMerchantStatus = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(setMerchantStatusSchema)
   .handler(async ({ data }) => {
     const rows = await sql<{ id: string }[]>`
@@ -142,7 +143,7 @@ const createCategorySchema = z.object({
 })
 
 export const createCategory = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(createCategorySchema)
   .handler(async ({ data }) => {
     const baseSlug = slugify(data.nameFr) || 'categorie'
@@ -171,7 +172,7 @@ const updateCategorySchema = z.object({
 })
 
 export const updateCategory = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(updateCategorySchema)
   .handler(async ({ data }) => {
     await sql`
@@ -185,17 +186,28 @@ export const updateCategory = createServerFn({ method: 'POST' })
   })
 
 export const deleteCategory = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(z.object({ categoryId: z.string().uuid() }))
   .handler(async ({ data }) => {
     // products.category_id has no ON DELETE behavior specified in the
     // migration (defaults to NO ACTION), so deleting a category still in
     // use on any product correctly fails at the DB level — surfaced here
     // as a normal thrown error rather than silently orphaning rows.
+    //
+    // Hygiene fix: this used to catch ANY thrown error and report "category
+    // in use" unconditionally, which would mask a real error (DB
+    // connectivity, permissions, etc.) behind a misleading message. Check
+    // the specific foreign-key-violation code (23503) — same pattern
+    // already used correctly for the admin-singleton unique violation
+    // (23505) in admin-auth.ts — and let anything else propagate as-is.
     try {
       await sql`DELETE FROM categories WHERE id = ${data.categoryId}`
-    } catch {
-      throw new Error('Impossible de supprimer : catégorie utilisée par des produits')
+    } catch (err) {
+      const code = err instanceof Error && 'code' in err ? (err as { code: string }).code : undefined
+      if (code === '23503') {
+        throw new Error('Impossible de supprimer : catégorie utilisée par des produits')
+      }
+      throw err
     }
     return { ok: true }
   })
@@ -217,7 +229,7 @@ const updateSettingsSchema = z.object({
 })
 
 export const updateSubscriptionSettings = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(updateSettingsSchema)
   .handler(async ({ data }) => {
     await sql`

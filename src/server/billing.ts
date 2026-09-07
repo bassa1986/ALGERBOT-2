@@ -4,6 +4,7 @@ import { sql } from '~/lib/db'
 import { merchantAuthMiddleware, adminAuthMiddleware } from '~/lib/auth'
 import { presignPrivateProofUpload, presignPrivateGet, StorageValidationError } from '~/lib/storage'
 import { mutationRateLimit, readRateLimit, uploadRateLimit } from '~/lib/rate-limit'
+import { csrfMiddleware } from '~/server/admin-auth'
 
 // ---------- Merchant: subscription status + BaridiMob RIB display ----------
 
@@ -176,7 +177,7 @@ export const getBillingProofViewUrl = createServerFn({ method: 'POST' })
 const approveSchema = z.object({ proofId: z.string().uuid() })
 
 export const approveBillingProof = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(approveSchema)
   .handler(async ({ context, data }) => {
     await sql.begin(async (tx) => {
@@ -208,7 +209,7 @@ export const approveBillingProof = createServerFn({ method: 'POST' })
 const rejectSchema = z.object({ proofId: z.string().uuid(), reason: z.string().min(1).max(500) })
 
 export const rejectBillingProof = createServerFn({ method: 'POST' })
-  .middleware([adminAuthMiddleware, mutationRateLimit])
+  .middleware([csrfMiddleware, adminAuthMiddleware, mutationRateLimit])
   .validator(rejectSchema)
   .handler(async ({ context, data }) => {
     // Locked + transactional for the same reason as approveBillingProof

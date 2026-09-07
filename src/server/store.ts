@@ -4,6 +4,8 @@ import { sql } from '~/lib/db'
 import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
 import { mutationRateLimit, readRateLimit, publicRateLimit } from '~/lib/rate-limit'
 import { THEME_IDS } from '~/lib/store-themes'
+import { getPublicBaseUrl, deleteObject, verifyUploadedObject } from '~/lib/storage'
+import { IMAGE_MAX_UPLOAD_BYTES } from '~/lib/plans'
 
 export type StoreLayoutVariant = 'general' | 'fashion' | 'grocery' | 'electronics' | 'furniture'
 
@@ -143,6 +145,30 @@ const updateStoreSchema = z.object({
   layoutVariant: z.enum(['general', 'fashion', 'grocery', 'electronics', 'furniture']).optional(),
 })
 
+// M6 fix: previously updateMyStore accepted logoUrl/bannerUrl as any
+// well-formed URL and wrote it straight to the row — nothing verified it
+// actually pointed at this merchant's own Adex namespace (a merchant could
+// point their storefront at any external URL), and the previous object was
+// never cleaned up on replace, leaking storage untracked by the quota
+// system. This mirrors the product-image confirm pattern: the URL must
+// resolve to a storage key under this merchant's own stores/{id}-{kind}/
+// prefix, and its real content is verified the same way H2 requires for
+// product images.
+async function assertOwnedStoreImageUrl(
+  url: string,
+  merchantId: string,
+  kind: 'logo' | 'banner',
+): Promise<string> {
+  const base = getPublicBaseUrl()
+  const expectedPrefix = `${base}/stores/${merchantId}-${kind}/`
+  if (!url.startsWith(expectedPrefix)) {
+    throw new Error('Image invalide')
+  }
+  const storageKey = url.slice(base.length + 1)
+  await verifyUploadedObject(storageKey, ['image/jpeg', 'image/png', 'image/webp'], IMAGE_MAX_UPLOAD_BYTES)
+  return storageKey
+}
+
 export const updateMyStore = createServerFn({ method: 'POST' })
   .middleware([merchantAuthMiddleware, mutationRateLimit])
   .validator(updateStoreSchema)
@@ -150,12 +176,28 @@ export const updateMyStore = createServerFn({ method: 'POST' })
     // Re-fetch to confirm ownership and get the current row before a
     // partial update — this store's id is never taken from client input.
     const existingRows = await sql<
-      { id: string; baseWilayaCode: number | null; baseCommuneCode: number | null }[]
+      {
+        id: string
+        baseWilayaCode: number | null
+        baseCommuneCode: number | null
+        logoUrl: string | null
+        bannerUrl: string | null
+      }[]
     >`
-      SELECT id, base_wilaya_code, base_commune_code FROM stores WHERE merchant_id = ${context.merchantId}
+      SELECT id, base_wilaya_code, base_commune_code, logo_url, banner_url
+      FROM stores WHERE merchant_id = ${context.merchantId}
     `
     const existing = existingRows[0]
     if (!existing) throw new Error('Boutique introuvable')
+
+    // Validate and namespace-check any newly-submitted logo/banner URL
+    // before it ever reaches the UPDATE below.
+    if (data.logoUrl) {
+      await assertOwnedStoreImageUrl(data.logoUrl, context.merchantId, 'logo')
+    }
+    if (data.bannerUrl) {
+      await assertOwnedStoreImageUrl(data.bannerUrl, context.merchantId, 'banner')
+    }
 
     // A store must declare BOTH its wilaya and its commune (the physical
     // location) before it can go live: buyers filter the marketplace by
@@ -199,6 +241,23 @@ export const updateMyStore = createServerFn({ method: 'POST' })
       RETURNING id, slug, name, description, logo_url, banner_url, base_wilaya_code, base_commune_code,
                 google_maps_url, theme_id, is_published, layout_variant
     `
+
+    // Best-effort cleanup of the previous logo/banner object now that the
+    // row has committed to a different one — mirrors deleteProductImage's
+    // pattern (never hold the DB write open on this, never fail the save
+    // over it).
+    const base = getPublicBaseUrl()
+    if (data.logoUrl !== undefined && existing.logoUrl && existing.logoUrl !== data.logoUrl && existing.logoUrl.startsWith(base)) {
+      await deleteObject(existing.logoUrl.slice(base.length + 1)).catch((err) =>
+        console.error('Failed to delete previous store logo', err),
+      )
+    }
+    if (data.bannerUrl !== undefined && existing.bannerUrl && existing.bannerUrl !== data.bannerUrl && existing.bannerUrl.startsWith(base)) {
+      await deleteObject(existing.bannerUrl.slice(base.length + 1)).catch((err) =>
+        console.error('Failed to delete previous store banner', err),
+      )
+    }
+
     return rows[0]
   })
 

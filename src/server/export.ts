@@ -13,9 +13,24 @@ async function getOwnedStoreId(merchantId: string): Promise<string> {
   return store.id
 }
 
+// H4 fix: Excel/LibreOffice/Google Sheets treat any cell whose content
+// starts with =, +, -, or @ as a formula. buyerName/buyerPhone/buyerCommune/
+// buyerAddress below are free-text fields from UNAUTHENTICATED guest
+// checkout, written straight into cells — a "buyer" placing a COD order
+// with a crafted name (e.g. starting with "=") could plant a formula that
+// executes, or exfiltrates data via =WEBSERVICE(...)/=HYPERLINK(...), the
+// moment a merchant opens their export. Prefixing a leading formula-trigger
+// character with a single quote makes spreadsheet apps treat it as literal
+// text instead of a formula.
+function sanitizeForSpreadsheet(value: string | number): string | number {
+  if (typeof value !== 'string') return value
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+}
+
 function buildXlsxBase64(headers: string[], rows: (string | number)[][], sheetName: string): string {
+  const sanitizedRows = rows.map((row) => row.map(sanitizeForSpreadsheet))
   const wb = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...sanitizedRows])
   sheet['!cols'] = headers.map(() => ({ wch: 18 }))
   XLSX.utils.book_append_sheet(wb, sheet, sheetName)
   return XLSX.write(wb, { type: 'base64', bookType: 'xlsx' })

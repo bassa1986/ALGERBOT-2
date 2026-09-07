@@ -22,6 +22,37 @@ function isAllowed(key: string, max: number, windowMs: number): boolean {
   return attempts.length <= max
 }
 
+// M4 fix: isAllowed() above filters each key's own array down to recent
+// attempts, but a key that reaches zero recent attempts is never removed
+// from the map itself -- on a public, internet-facing app this grows
+// unbounded with every distinct IP that ever hits a rate-limited endpoint,
+// a slow memory leak that only shows up after days/weeks of uptime. Sweep
+// the whole map periodically and drop any key with nothing left in its
+// window.
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
+const MAX_BUCKET_AGE_MS = 60 * 60 * 1000 // an hour is well beyond any window used below
+
+function sweepBuckets(): void {
+  const now = Date.now()
+  for (const [key, attempts] of buckets) {
+    const fresh = attempts.filter((t) => now - t < MAX_BUCKET_AGE_MS)
+    if (fresh.length === 0) {
+      buckets.delete(key)
+    } else if (fresh.length !== attempts.length) {
+      buckets.set(key, fresh)
+    }
+  }
+}
+
+// Only runs in a long-lived server process (not during build/SSG), and
+// unref'd so it never keeps the process alive on its own -- consistent
+// with this being a best-effort cleanup, not something correctness
+// depends on.
+if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  const timer = setInterval(sweepBuckets, SWEEP_INTERVAL_MS)
+  timer.unref?.()
+}
+
 /**
  * Plain-function rate-limit check, for callers that aren't a
  * createServerFn (which the middleware factory below is built for) — the
@@ -38,11 +69,24 @@ export function checkRateLimit(bucketName: string, clientIp: string, max: number
 }
 
 const getClientIp = createServerOnlyFn((): string => {
-  // x-forwarded-for can contain a comma-separated chain when the request
-  // passed through multiple proxies; the first entry is the original
-  // client. Falls back to a constant bucket key if the header is entirely
-  // absent (e.g. local dev without a reverse proxy) — better to rate-limit
-  // all such requests together than to silently skip limiting them.
+  // M1 fix: x-forwarded-for was previously trusted with no verification
+  // that a trusted reverse proxy actually set it -- on a deployment
+  // reachable directly (no proxy in front, or one that appends rather
+  // than overwrites), any client could set an arbitrary X-Forwarded-For
+  // and get a fresh rate-limit bucket on every request, fully defeating
+  // authRateLimit/publicRateLimit/etc.
+  //
+  // This project deploys to Vercel: Vercel's edge network sets (and
+  // documents as non-spoofable, since it overwrites rather than appends)
+  // `x-vercel-forwarded-for` specifically for this reason -- prefer that
+  // header when present. Plain `x-forwarded-for` is kept only as a
+  // fallback for local dev / non-Vercel deployments, where it is NOT a
+  // safe trust boundary on its own; if this is ever deployed behind a
+  // different proxy, replace this fallback with that proxy's own
+  // documented client-IP header (or a shared-secret check) rather than
+  // trusting x-forwarded-for blindly.
+  const vercelIp = getRequestHeader('x-vercel-forwarded-for')?.split(',')[0]?.trim()
+  if (vercelIp) return vercelIp
   return getRequestHeader('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 })
 

@@ -29,11 +29,24 @@ function getDummyHash(): Promise<string> {
 // Verifies the request's Origin header matches this app's own origin, to
 // defend against cross-site POSTs that SameSite=Lax alone doesn't block
 // (e.g. a form POST from a sibling subdomain).
-const csrfMiddleware = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+//
+// Hygiene fix: this previously failed OPEN if APP_ORIGIN was unset or the
+// request had no Origin header at all (`appOrigin && origin && ...` — both
+// falsy conditions just skip the check entirely and call next()). That
+// meant a misconfigured deployment (forgot to set APP_ORIGIN) silently ran
+// with NO CSRF protection on every endpoint this middleware guards, with
+// no error or warning. Fail closed instead: an unset APP_ORIGIN is a config
+// error, and a request with no Origin header at all is unusual enough for
+// a same-site POST that it's safer to reject than to assume it's fine.
+export const csrfMiddleware = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   const request = getRequest()
   const origin = request.headers.get('origin')
   const appOrigin = process.env.APP_ORIGIN
-  if (appOrigin && origin && new URL(origin).origin !== appOrigin) {
+  if (!appOrigin) {
+    console.error('[csrf] APP_ORIGIN is not set — rejecting request that requires CSRF protection.')
+    throw new Error('Origin check failed')
+  }
+  if (!origin || new URL(origin).origin !== appOrigin) {
     throw new Error('Origin check failed')
   }
   return next()
