@@ -60,6 +60,7 @@ export function ProductCard({
   // between cards here even though every card renders the same JSX.
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isNegotiateOpen, setIsNegotiateOpen] = useState(false)
+  const [telegramMessageCopied, setTelegramMessageCopied] = useState(false)
 
   const hasWhatsapp = Boolean(merchantWhatsappNumber)
   const hasTelegram = Boolean(merchantTelegramUsername)
@@ -86,19 +87,34 @@ export function ProductCard({
     setIsNegotiateOpen(false)
   }
 
-  function handleNegotiateTelegram() {
+  async function handleNegotiateTelegram() {
     if (!merchantTelegramUsername) return
     // Telegram's official documented "prefill + share picker" pattern is
     // t.me/share/url?url=...&text=... (used elsewhere in this app, see
     // ShareSheet.tsx's handleTelegramShare) — that opens a chat PICKER,
-    // not a specific person's chat directly. For a direct personal chat
+    // not a specific person's chat directly, and is useless here anyway
+    // since a buyer messaging a stranger merchant almost never already
+    // has them as a saved contact to pick. For a DIRECT personal chat
     // like this one, some tools claim t.me/<username>?text=... prefills
     // the message too, but this isn't confirmed in Telegram's own
-    // documented special links, so it isn't relied on here — this opens
-    // the direct chat with the merchant (which reliably works), and the
-    // buyer sends the product reference themselves once it's open.
+    // documented special links, so it isn't relied on here.
+    //
+    // Best available compromise given that real platform limitation: copy
+    // the same message WhatsApp would have pre-filled to the clipboard
+    // right before opening the direct chat, so the buyer pastes instead
+    // of typing product name/price/link from scratch. Not literally
+    // "auto-sent" — no website can make either platform send a message
+    // without the buyer's own tap, on WhatsApp either — but this closes
+    // the gap as far as is actually possible for Telegram.
+    try {
+      await navigator.clipboard.writeText(buildNegotiateMessage())
+      setTelegramMessageCopied(true)
+    } catch {
+      // Clipboard access can fail (permissions, non-HTTPS, older
+      // WebViews) — the chat still opens either way, just without the
+      // copy-paste shortcut; the buyer can still type the message.
+    }
     window.open(buildMerchantTelegramLink(merchantTelegramUsername), '_blank', 'noopener,noreferrer')
-    setIsNegotiateOpen(false)
   }
 
   const isOutOfStock = product.totalStock <= 0
@@ -311,11 +327,15 @@ export function ProductCard({
       <ShareSheet target={shareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} fbAppId={fbAppId} />
       <NegotiateSheet
         isOpen={isNegotiateOpen}
-        onClose={() => setIsNegotiateOpen(false)}
+        onClose={() => {
+          setIsNegotiateOpen(false)
+          setTelegramMessageCopied(false)
+        }}
         hasWhatsapp={hasWhatsapp}
         hasTelegram={hasTelegram}
         onWhatsApp={handleNegotiateWhatsApp}
         onTelegram={handleNegotiateTelegram}
+        telegramMessageCopied={telegramMessageCopied}
       />
     </>
   )

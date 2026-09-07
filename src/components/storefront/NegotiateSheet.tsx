@@ -24,13 +24,22 @@ export function NegotiateSheet({
   hasTelegram,
   onWhatsApp,
   onTelegram,
+  telegramMessageCopied,
 }: {
   isOpen: boolean
   onClose: () => void
   hasWhatsapp: boolean
   hasTelegram: boolean
   onWhatsApp: () => void
-  onTelegram: () => void
+  onTelegram: () => void | Promise<void>
+  /** True once the Telegram button has been tapped and the product
+   * message was copied to the clipboard (or attempted to be) — shown as
+   * an inline confirmation instead of closing the sheet immediately, so
+   * the buyer sees the "paste it" instruction before the sheet vanishes.
+   * See ProductCard.tsx's handleNegotiateTelegram for why a copy step
+   * exists at all: Telegram's direct personal-chat links can't pre-fill
+   * a message the way WhatsApp's wa.me?text= can. */
+  telegramMessageCopied: boolean
 }) {
   const { t, dir } = useLocale()
 
@@ -68,6 +77,11 @@ export function NegotiateSheet({
             >
               {t.visitMerchantTelegram}
             </button>
+          )}
+          {telegramMessageCopied && (
+            <p className="px-1 pt-1 text-center text-xs text-[var(--color-text-muted)]">
+              {t.negotiateTelegramCopiedHint}
+            </p>
           )}
         </div>
       </div>
