@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { sql } from '~/lib/db'
 import type { StoreLayoutVariant } from '~/server/store'
 import { sanitizeSearchInput } from '~/lib/sanitize'
-import { publicRateLimit } from '~/lib/rate-limit'
+import { publicReadRateLimit } from '~/lib/rate-limit'
 
 // Everything here is public / no-auth — this is what buyers see. Every
 // query filters by is_published (store) and is_published (product) plus an
@@ -42,7 +42,7 @@ async function isStoreVisible(storeId: string): Promise<boolean> {
 }
 
 export const getPublicStoreBySlug = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ slug: z.string().min(1).max(120) }))
   .handler(async ({ data }): Promise<PublicStore | null> => {
     const rows = await sql<PublicStore[]>`
@@ -212,7 +212,7 @@ export async function previewFlowOrder(input: FlowOrderPreviewInput): Promise<Fl
 }
 
 export const listPublicProducts = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(listProductsSchema)
   .handler(async ({ data }): Promise<PublicProductCard[]> => {
     const storeRows = await sql<{ id: string }[]>`
@@ -302,7 +302,7 @@ export interface PublicProductDetail {
 }
 
 export const getPublicProduct = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ productId: z.string().uuid() }))
   .handler(async ({ data }): Promise<PublicProductDetail | null> => {
     const productRows = await sql<
@@ -360,7 +360,7 @@ export interface ShareableProductSummary {
 }
 
 export const getShareableProductSummary = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ productId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ShareableProductSummary | null> => {
     const rows = await sql<
@@ -417,7 +417,7 @@ export interface WhatsAppContactSummary {
 }
 
 export const getWhatsAppContactSummary = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ slug: z.string().min(1).max(120) }))
   .handler(async ({ data }): Promise<WhatsAppContactSummary | null> => {
     const rows = await sql<WhatsAppContactSummary[]>`
@@ -432,7 +432,7 @@ export const getWhatsAppContactSummary = createServerFn({ method: 'GET' })
 
 /** Only categories that have at least one published product in this store. */
 export const listStoreCategoriesInUse = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ storeSlug: z.string().min(1).max(120) }))
   .handler(async ({ data }): Promise<PublicCategory[]> => {
     return sql<PublicCategory[]>`

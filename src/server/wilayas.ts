@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
-import { publicRateLimit } from '~/lib/rate-limit'
+import { publicReadRateLimit } from '~/lib/rate-limit'
 
 export interface WilayaRow {
   code: number
@@ -12,7 +12,7 @@ export interface WilayaRow {
 // Public — no auth required. Wilayas are reference data shown to merchants
 // (delivery zone setup) and buyers (checkout wilaya picker) alike.
 export const getWilayas = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .handler(async (): Promise<WilayaRow[]> => {
     return sql<WilayaRow[]>`SELECT code, name_ar, name_fr FROM wilayas ORDER BY code`
   })
@@ -39,7 +39,7 @@ export interface CommuneRow {
 // their options as soon as a wilaya is picked, without loading all ~1,541
 // communes up front.
 export const getCommunesByWilaya = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ wilayaCode: z.number().int().min(1).max(69) }))
   .handler(async ({ data }): Promise<CommuneRow[]> => {
     return sql<CommuneRow[]>`

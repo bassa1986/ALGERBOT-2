@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { sql } from '~/lib/db'
-import { publicRateLimit } from '~/lib/rate-limit'
+import { publicReadRateLimit } from '~/lib/rate-limit'
 
 export interface CategoryRow {
   id: string
@@ -10,7 +10,7 @@ export interface CategoryRow {
 }
 
 export const listCategories = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .handler(async (): Promise<CategoryRow[]> => {
     return sql<CategoryRow[]>`
       SELECT id, slug, name_ar, name_fr FROM categories ORDER BY sort_order ASC

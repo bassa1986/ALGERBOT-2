@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
 import { sanitizeSearchInput } from '~/lib/sanitize'
-import { publicRateLimit } from '~/lib/rate-limit'
+import { publicReadRateLimit } from '~/lib/rate-limit'
 
 // Marketplace-wide (cross-store) browsing — distinct from storefront-public.ts,
 // which is scoped to one store. Same visibility rule: store must be
@@ -15,7 +15,7 @@ export interface MarketplaceStoreCard {
   bannerUrl: string | null
 }
 
-export const listMarketplaceStores = createServerFn({ method: 'GET' }).middleware([publicRateLimit])
+export const listMarketplaceStores = createServerFn({ method: 'GET' }).middleware([publicReadRateLimit])
   .handler(
   async (): Promise<MarketplaceStoreCard[]> => {
     return sql<MarketplaceStoreCard[]>`
@@ -49,7 +49,7 @@ const searchSchema = z.object({
 })
 
 export const searchMarketplaceProducts = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(searchSchema)
   .handler(async ({ data }): Promise<MarketplaceProductCard[]> => {
     const searchPattern = sanitizeSearchInput(data.q)
@@ -109,7 +109,7 @@ export interface MarketplaceCategory {
 }
 
 /** Only categories with at least one published product across the whole marketplace. */
-export const listMarketplaceCategoriesInUse = createServerFn({ method: 'GET' }).middleware([publicRateLimit])
+export const listMarketplaceCategoriesInUse = createServerFn({ method: 'GET' }).middleware([publicReadRateLimit])
   .handler(
   async (): Promise<MarketplaceCategory[]> => {
     return sql<MarketplaceCategory[]>`
@@ -131,7 +131,7 @@ export interface MarketplaceWilaya {
 }
 
 /** Only wilayas that have at least one published, active-subscription store based there. */
-export const listMarketplaceWilayasInUse = createServerFn({ method: 'GET' }).middleware([publicRateLimit])
+export const listMarketplaceWilayasInUse = createServerFn({ method: 'GET' }).middleware([publicReadRateLimit])
   .handler(
   async (): Promise<MarketplaceWilaya[]> => {
     return sql<MarketplaceWilaya[]>`
@@ -159,7 +159,7 @@ export interface MarketplaceCommune {
  * once the buyer has already picked a wilaya.
  */
 export const listMarketplaceCommunesInUse = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .validator(z.object({ wilayaCode: z.number().int().min(1).max(69) }))
   .handler(async ({ data }): Promise<MarketplaceCommune[]> => {
     return sql<MarketplaceCommune[]>`

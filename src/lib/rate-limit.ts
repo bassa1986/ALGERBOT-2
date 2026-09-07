@@ -81,8 +81,26 @@ export const mutationRateLimit = createRateLimitMiddleware('mutation', 30, 60_00
 /** Generous: plain reads (list/get). Still capped, since even reads cost DB round trips. */
 export const readRateLimit = createRateLimitMiddleware('read', 1000, 60_000)
 
-/** Strict: public, unauthenticated, potentially-abusable endpoints (checkout, order lookup, storefront search). */
+/**
+ * Strict: genuinely sensitive public actions -- placing an order
+ * (submitCheckout) and looking an order up by phone + tracking code
+ * (lookupOrder, which is guessable/enumerable and worth guarding tightly).
+ * Deliberately NOT used for plain storefront browsing -- see
+ * publicReadRateLimit below for why that needs a much higher ceiling.
+ */
 export const publicRateLimit = createRateLimitMiddleware('public', 15, 60_000)
+
+/**
+ * Generous: plain, unauthenticated storefront reads (store info, product
+ * list/detail, category list). A single product-page view can cost 2-3 of
+ * these calls, so a shared low budget with actual checkout/lookup actions
+ * (see publicRateLimit above) meant a buyer browsing a handful of products
+ * could exhaust the limit from normal use alone -- and could then get
+ * blocked right as they tried to submit their actual order. 120/min still
+ * comfortably stops an automated scraper/bot hammering the DB, while no
+ * real human clicking through products could ever come close to it.
+ */
+export const publicReadRateLimit = createRateLimitMiddleware('public-read', 120, 60_000)
 
 /** Strict: file upload presign requests, since each one is an Adex round trip. */
 export const uploadRateLimit = createRateLimitMiddleware('upload', 20, 60_000)

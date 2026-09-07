@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { sql } from '~/lib/db'
 import { merchantAuthMiddleware, getOptionalMerchantSession } from '~/lib/auth'
-import { mutationRateLimit, readRateLimit, publicRateLimit } from '~/lib/rate-limit'
+import { mutationRateLimit, readRateLimit, publicReadRateLimit } from '~/lib/rate-limit'
 import { THEME_IDS } from '~/lib/store-themes'
 
 export type StoreLayoutVariant = 'general' | 'fashion' | 'grocery' | 'electronics' | 'furniture'
@@ -42,7 +42,7 @@ export const getMyStore = createServerFn({ method: 'GET' })
  * public shop page won't be logged in at all.
  */
 export const getCurrentMerchantId = createServerFn({ method: 'GET' })
-  .middleware([publicRateLimit])
+  .middleware([publicReadRateLimit])
   .handler(async (): Promise<string | null> => {
     const session = await getOptionalMerchantSession()
     return session?.merchantId ?? null
