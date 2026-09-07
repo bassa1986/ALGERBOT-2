@@ -1,4 +1,4 @@
-import { createMiddleware, createServerOnlyFn } from '@tanstack/react-start'
+﻿import { createMiddleware, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
 
 // Single shared in-memory sliding-window rate limiter. Acceptable for a
@@ -55,7 +55,7 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
 
 /**
  * Plain-function rate-limit check, for callers that aren't a
- * createServerFn (which the middleware factory below is built for) — the
+ * createServerFn (which the middleware factory below is built for) â€” the
  * WhatsApp Cloud API routes (src/routes/api/whatsapp/*.ts) are raw HTTP
  * route handlers (`server.handlers.GET/POST`), a different TanStack Start
  * mechanism with no middleware pipeline of its own, so they call this
@@ -85,15 +85,14 @@ const getClientIp = createServerOnlyFn((): string => {
   // different proxy, replace this fallback with that proxy's own
   // documented client-IP header (or a shared-secret check) rather than
   // trusting x-forwarded-for blindly.
-  const vercelIp = getRequestHeader('x-vercel-forwarded-for')?.split(',')[0]?.trim()
-  if (vercelIp) return vercelIp
+  return getRequestHeader('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   return getRequestHeader('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 })
 
 /**
  * Creates a server-function middleware that rate-limits by client IP
  * under the given bucket name. Each distinct `bucketName` gets its own
- * independent counters — use a different name per endpoint (or per
+ * independent counters â€” use a different name per endpoint (or per
  * logical group of endpoints that should share a budget).
  */
 export function createRateLimitMiddleware(
