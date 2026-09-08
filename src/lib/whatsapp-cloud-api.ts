@@ -203,10 +203,7 @@ export async function sendNegotiationStartTemplate(to: string, buyerMessage: str
   const data = (await res.json()) as { messages?: { id: string }[] }
   return data.messages?.[0]?.id ?? null
 }
-
-/**
- * Sends a one-time login code to a MERCHANT's WhatsApp number via an
- * Authentication-category template — the ONLY Meta-compliant way to deliver a one-time
+ * template — the ONLY Meta-compliant way to deliver a one-time
  * passcode over WhatsApp. Plain free-form text (sendTextMessage above)
  * is explicitly disallowed for this by Meta's own policy, and doesn't
  * even work outside the 24-hour customer-service window, which a
