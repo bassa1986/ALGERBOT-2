@@ -3,7 +3,6 @@ import { getPublicStoreBySlug } from '~/server/storefront-public'
 import { getCurrentMerchantId } from '~/server/store'
 import { getTelegramLinkConfig, getFacebookAppId } from '~/server/auth'
 import { CartProvider } from '~/components/storefront/CartContext'
-import { StorefrontChatWidget } from '~/components/storefront/StorefrontChatWidget'
 import { StorefrontThemeProvider } from '~/components/storefront/StorefrontThemeProvider'
 import { LocaleProvider, useLocale } from '~/lib/i18n/LocaleContext'
 
@@ -37,7 +36,6 @@ function StorefrontLayout() {
       <div className="min-h-screen bg-[var(--color-surface-muted)]" dir={dir}>
         <StorefrontThemeProvider themeId={store.themeId}>
           <Outlet />
-          <StorefrontChatWidget store={store} />
         </StorefrontThemeProvider>
       </div>
     </CartProvider>
