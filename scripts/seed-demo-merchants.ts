@@ -7,11 +7,11 @@
 // (images.pexels.com), verified one at a time by fetching each photo's
 // actual Pexels page during this script's creation -- not fabricated IDs.
 // Pexels' license (pexels.com/license) allows free commercial use without
-// attribution. Only 7 of the 19 catalog categories have a verified image
-// below; the rest use REUSED_FALLBACK_IMAGE with a comment marking them
-// as such -- replace those with category-specific verified Pexels URLs
-// (or the merchant's own photos) before using this as real launch
-// content, rather than treating the fallback as final.
+// attribution. All 19 catalog categories now have a distinct, verified,
+// category-accurate image (previously only 7 did; the other 12 shared one
+// generic fallback photo). These are still stock photos, not real merchant
+// product photos -- replace with the merchant's own photos before using
+// this as real launch content.
 //
 // Usage: npx tsx scripts/seed-demo-merchants.ts
 // Safe to re-run: skips any merchant whose telegram_user_id already exists.
@@ -41,10 +41,6 @@ const DEMO_TELEGRAM_ID_BASE = 900000001
 function pexelsUrl(photoId) {
   return 'https://images.pexels.com/photos/' + photoId + '/pexels-photo-' + photoId + '.jpeg?auto=compress&cs=tinysrgb&w=1200'
 }
-
-// Verified during this script's creation by fetching each photo's real
-// Pexels page -- see the module comment above.
-const REUSED_FALLBACK_IMAGE = pexelsUrl(3945679) // "Minimalist overhead shot of iPhones, iPad, and earphones" -- generic placeholder, NOT category-accurate for every use below
 
 const MERCHANTS = [
   {
@@ -140,8 +136,8 @@ const MERCHANTS = [
     communeNameFr: 'Bouzareah',
     productName: 'Service de table 12 pièces',
     priceCentimes: 280000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(1395967), // verified: "Close-up Photo of Dinnerware Set on Top of Table With Glass Cups" - Mat Brown
+    imageVerified: true,
   },
   {
     storeName: 'Déco Design Alger',
@@ -152,8 +148,8 @@ const MERCHANTS = [
     communeNameFr: "Sidi M'hamed",
     productName: 'Lampe de salon design',
     priceCentimes: 420000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(19899071), // verified: "Modern Living Room" (minimalist decor with lamp) - Lisa Anna
+    imageVerified: true,
   },
   {
     storeName: 'Sport Plus Algérie',
@@ -164,8 +160,8 @@ const MERCHANTS = [
     communeNameFr: 'Birkhadem',
     productName: 'Ballon de football officiel',
     priceCentimes: 250000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(274506), // verified: "White Adidas Soccer Ball on Grass" - Pixabay
+    imageVerified: true,
   },
   {
     storeName: 'Bébé Confort DZ',
@@ -176,8 +172,8 @@ const MERCHANTS = [
     communeNameFr: 'Bachedjerah',
     productName: 'Poussette bébé 3-en-1',
     priceCentimes: 950000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(11477553), // verified: "A Couple Walking while Pushing a Baby Stroller on the Street" - Alexandros Kournoutis
+    imageVerified: true,
   },
   {
     storeName: 'Bijouterie El Kasbah',
@@ -188,8 +184,8 @@ const MERCHANTS = [
     communeNameFr: 'Casbah',
     productName: 'Montre homme acier inoxydable',
     priceCentimes: 780000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(2113994), // verified: "Close-Up Photo of Wristwatch" (metal band) - Joey Nguyễn
+    imageVerified: true,
   },
   {
     storeName: 'Maroquinerie Alger',
@@ -200,8 +196,8 @@ const MERCHANTS = [
     communeNameFr: 'El Madania',
     productName: 'Sac à main cuir véritable',
     priceCentimes: 380000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(2977304), // verified: "Brown Leather Handbag" - Stanislav Kondratiev
+    imageVerified: true,
   },
   {
     storeName: 'Épicerie Fine Alger',
@@ -212,8 +208,8 @@ const MERCHANTS = [
     communeNameFr: 'Bab El Oued',
     productName: 'Coffret gourmand produits du terroir',
     priceCentimes: 220000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(5961371), // verified: "A Top View of a Table with Assorted Food" (charcuterie spread) - cottonbro studio
+    imageVerified: true,
   },
   {
     storeName: 'Auto Pièces Alger',
@@ -224,8 +220,8 @@ const MERCHANTS = [
     communeNameFr: 'Oued Smar',
     productName: 'Kit entretien véhicule',
     priceCentimes: 320000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(8478233), // verified: "Mechanic Fixing a Car" (close-up engine/tools) - Sergey Meshkov
+    imageVerified: true,
   },
   {
     storeName: 'Bricolage Pro DZ',
@@ -236,8 +232,8 @@ const MERCHANTS = [
     communeNameFr: 'Baraki',
     productName: 'Coffret outils 45 pièces',
     priceCentimes: 480000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(5357150), // verified: "Close up of Tools" (wrench/screwdriver/hammer flat lay) - Maria Mileta
+    imageVerified: true,
   },
   {
     storeName: 'Jouet Magique Alger',
@@ -248,8 +244,8 @@ const MERCHANTS = [
     communeNameFr: 'Bourouba',
     productName: 'Circuit de voitures télécommandées',
     priceCentimes: 350000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(6865340), // verified: "Yellow and Blue Wooden Toy Cars" - Ann H
+    imageVerified: true,
   },
   {
     storeName: 'Librairie du Savoir',
@@ -260,8 +256,8 @@ const MERCHANTS = [
     communeNameFr: 'Bologhine Ibnou Ziri',
     productName: 'Ensemble fournitures scolaires',
     priceCentimes: 150000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(5088017), // verified: "Spiral Notebook Pencils and Paper Clips Flatlay" - olia danilevich
+    imageVerified: true,
   },
   {
     storeName: 'Artisanat Traditionnel Alger',
@@ -272,8 +268,8 @@ const MERCHANTS = [
     communeNameFr: 'Oued Koriche',
     productName: 'Plateau en cuivre gravé main',
     priceCentimes: 620000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(827519), // verified: "Brass-colored Oil Lamp" (copper/brass decor still life) - Valeria Boltneva
+    imageVerified: true,
   },
   {
     storeName: 'Bazar El Djazair',
@@ -284,8 +280,8 @@ const MERCHANTS = [
     communeNameFr: 'Mohamed Belouzdad',
     productName: 'Assortiment articles ménagers',
     priceCentimes: 190000,
-    imageUrl: REUSED_FALLBACK_IMAGE,
-    imageVerified: false,
+    imageUrl: pexelsUrl(12292644), // verified: "Kitchen Cooking Utensils Photo" (hanging utensils) - dada _design
+    imageVerified: true,
   },
 ]
 
@@ -363,9 +359,9 @@ async function main() {
   console.log('\nDone. Created ' + created + ', skipped ' + skipped + ' (already existed).')
   if (unverifiedImageCount > 0) {
     console.log(
-      '\nNOTE: ' + unverifiedImageCount + ' product(s) are using a REUSED placeholder image, not a ' +
-        'category-specific verified photo -- see the "imageVerified: false" entries in this script and replace ' +
-        'imageUrl with a real, checked Pexels URL for each before using this as real launch content.',
+      '\nNOTE: ' + unverifiedImageCount + ' product(s) are using an unverified image -- check ' +
+        'the "imageVerified: false" entries in this script and replace imageUrl with a real, ' +
+        'checked Pexels URL (or the merchant\'s own photo) before using this as real launch content.',
     )
   }
 
