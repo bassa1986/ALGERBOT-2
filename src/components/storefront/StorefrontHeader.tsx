@@ -6,7 +6,7 @@ import { LanguageSwitch } from './LanguageSwitch'
 import { useEntranceAnimation } from '~/lib/useScrollReveal'
 import { useLocale } from '~/lib/i18n/LocaleContext'
 import { ShareSheet, type ShareTarget } from './ShareSheet'
-import { buildAppLink, buildShareableAppUrl, buildMerchantTelegramLink, type TelegramLinkConfig } from '~/lib/telegram-links'
+import { buildAppLink, buildShareableAppUrl, type TelegramLinkConfig } from '~/lib/telegram-links'
 import { PhoneIcon, PinIcon } from './Icons'
 
 export function StorefrontHeader({
@@ -93,21 +93,10 @@ export function StorefrontHeader({
         </div>
       </div>
 
-      {(store.merchantTelegramUsername ||
-        store.merchantPhone ||
+      {(store.merchantPhone ||
         store.googleMapsUrl ||
         isOwner) && (
         <div className="flex flex-wrap gap-2 px-4 pb-3">
-          {store.merchantTelegramUsername && (
-            <a
-              href={buildMerchantTelegramLink(store.merchantTelegramUsername)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full bg-[#229ED9] px-4 py-2 text-xs font-semibold text-white"
-            >
-              {t.visitMerchantTelegram}
-            </a>
-          )}
           {store.merchantPhone && (
             <a
               href={`tel:${store.merchantPhone}`}
