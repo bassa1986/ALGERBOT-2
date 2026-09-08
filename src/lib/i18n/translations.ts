@@ -29,6 +29,9 @@ export interface TranslationDictionary {
   negotiateButton: string
   negotiateMessagePrefix: string
   negotiateTelegramCopiedHint: string
+  negotiateInputPlaceholder: string
+  negotiateSendButton: string
+  negotiateDeliveryFailed: string
   searchPlaceholder: string
   wilayaFilterAll: string
   communeFilterAll: string
@@ -354,6 +357,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
     negotiateButton: 'تفاوض على السعر',
     negotiateMessagePrefix: 'مرحباً، أنا مهتم بالتفاوض على هذا المنتج:',
     negotiateTelegramCopiedHint: 'تم نسخ رسالة المنتج — الصقها (اضغط مطولاً ثم "لصق") في المحادثة لإرسالها.',
+    negotiateInputPlaceholder: 'اكتب رسالتك...',
+    negotiateSendButton: 'إرسال',
+    negotiateDeliveryFailed: 'لم يتم التسليم بعد',
     searchPlaceholder: 'ابحث عن منتج...',
     wilayaFilterAll: 'كل الولايات',
     communeFilterAll: 'كل البلديات',
@@ -657,6 +663,9 @@ export const translations: Record<Locale, TranslationDictionary> = {
     negotiateButton: 'Négocier le prix',
     negotiateMessagePrefix: 'Bonjour, je suis intéressé(e) pour négocier ce produit :',
     negotiateTelegramCopiedHint: 'Le message du produit a été copié — collez-le (appui long puis "Coller") dans la discussion pour l\'envoyer.',
+    negotiateInputPlaceholder: 'Écrivez votre message...',
+    negotiateSendButton: 'Envoyer',
+    negotiateDeliveryFailed: 'Pas encore livré',
     searchPlaceholder: 'Rechercher un produit...',
     wilayaFilterAll: 'Toutes les wilayas',
     communeFilterAll: 'Toutes les communes',

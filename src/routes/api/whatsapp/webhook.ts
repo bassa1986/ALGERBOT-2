@@ -1,11 +1,16 @@
 // WhatsApp Cloud API webhook -- receives (1) Meta's one-time GET
 // verification handshake when you register this URL, and (2) POSTed
-// events afterward. This app cares about one event: a completed order
-// Flow, delivered as a special interactive.nfm_reply message. On
-// completion, this looks up the accumulated session state (see
-// whatsapp_flow_sessions, migration 0013) by flow_token and calls the
-// SAME createOrder() the web checkout uses -- full server-side
-// price/stock re-validation, nothing from the Flow trusted as final.
+// events afterward. This app cares about two events:
+//   1. A completed order Flow, delivered as a special interactive.nfm_reply
+//      message. On completion, this looks up the accumulated session state
+//      (see whatsapp_flow_sessions, migration 0013) by flow_token and
+//      calls the SAME createOrder() the web checkout uses -- full
+//      server-side price/stock re-validation, nothing from the Flow
+//      trusted as final.
+//   2. A plain text reply from a merchant to a Negotiate chat message we
+//      sent on a buyer's behalf (see src/server/negotiation.ts and
+//      handleNegotiationReply below) -- relayed into that thread so the
+//      buyer sees it via polling.
 //
 // Register this URL in the Meta App Dashboard (WhatsApp > Configuration >
 // Webhook) as:
@@ -22,6 +27,13 @@ import { verifyWebhookSignature } from '~/lib/crypto'
 interface IncomingMessage {
   from: string
   type: string
+  text?: { body: string }
+  // Present when the sender used WhatsApp's native "swipe to reply" —
+  // context.id is the wamid of the message they're replying to. Used by
+  // handleNegotiationReply below to match a merchant's reply to the exact
+  // Negotiate thread it belongs to (see negotiation_messages'
+  // external_message_id doc comment, migration 0019).
+  context?: { id: string }
   interactive?: {
     type: string
     nfm_reply?: {
@@ -161,6 +173,60 @@ async function handleFlowCompletion(message: IncomingMessage) {
   }
 }
 
+/**
+ * A plain text message from a merchant, replying (in their own real
+ * WhatsApp app) to a Negotiate chat message we sent on a buyer's behalf.
+ * See src/server/negotiation.ts's module comment for the full design;
+ * this mirrors src/routes/api/telegram/webhook.ts's equivalent handler.
+ */
+async function handleNegotiationReply(message: IncomingMessage) {
+  const text = message.text?.body
+  if (!text) return
+
+  let threadId: string | null = null
+
+  if (message.context?.id) {
+    // Exact match: merchant used "swipe to reply" on our specific message.
+    const rows = await sql<{ threadId: string }[]>`
+      SELECT nm.thread_id AS "threadId"
+      FROM negotiation_messages nm
+      JOIN negotiation_threads nt ON nt.id = nm.thread_id
+      JOIN merchants m ON m.id = nt.merchant_id
+      WHERE nm.external_message_id = ${message.context.id}
+        AND nm.sender = 'buyer' AND m.whatsapp_number = ${message.from}
+      LIMIT 1
+    `
+    threadId = rows[0]?.threadId ?? null
+  }
+
+  if (!threadId) {
+    // Fallback: this merchant's most recently active open WhatsApp
+    // thread. Wrong if they're juggling multiple concurrent buyers and
+    // reply out of order without using reply-to — an accepted,
+    // documented limitation (see src/server/negotiation.ts).
+    const fallbackRows = await sql<{ threadId: string }[]>`
+      SELECT nt.id AS "threadId"
+      FROM negotiation_threads nt
+      JOIN merchants m ON m.id = nt.merchant_id
+      WHERE m.whatsapp_number = ${message.from} AND nt.channel = 'whatsapp' AND nt.status = 'open'
+      ORDER BY nt.last_message_at DESC
+      LIMIT 1
+    `
+    threadId = fallbackRows[0]?.threadId ?? null
+  }
+
+  // No matching thread at all -- this is just a normal WhatsApp message
+  // to our business number unrelated to Negotiate (e.g. a buyer's own
+  // order-related question). Correctly ignored here.
+  if (!threadId) return
+
+  await sql`
+    INSERT INTO negotiation_messages (thread_id, sender, body, delivery_status, external_message_id)
+    VALUES (${threadId}, 'merchant', ${text}, 'sent', NULL)
+  `
+  await sql`UPDATE negotiation_threads SET last_message_at = now() WHERE id = ${threadId}`
+}
+
 export const Route = createFileRoute('/api/whatsapp/webhook')({
   server: {
     handlers: {
@@ -234,9 +300,11 @@ export const Route = createFileRoute('/api/whatsapp/webhook')({
         for (const message of messages) {
           if (message.type === 'interactive' && message.interactive?.type === 'nfm_reply') {
             await handleFlowCompletion(message)
+          } else if (message.type === 'text') {
+            await handleNegotiationReply(message)
           }
-          // Other message types (plain text replies, etc.) aren't handled
-          // yet -- this webhook currently only cares about completed Flows.
+          // Other message types (images, reactions, etc.) aren't handled
+          // — nothing in this app currently needs them.
         }
 
         // Must respond 200 quickly (Meta retries aggressively on

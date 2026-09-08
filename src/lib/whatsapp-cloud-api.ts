@@ -98,12 +98,18 @@ export async function sendFlowMessage(input: SendFlowMessageInput): Promise<void
  * immediately after the buyer's own Flow completion message, which is
  * itself inside that window. Do not reuse this for messages sent long
  * after the triggering user action without checking that constraint.
+ *
+ * Returns the Cloud API's message id ("wamid...") on success, or null if
+ * WHATSAPP_* isn't configured (existing callers that ignore the return
+ * value are unaffected). Used by src/server/negotiation.ts to record
+ * which of our outbound messages a merchant's later "swipe to reply"
+ * is replying to.
  */
-export async function sendTextMessage(to: string, body: string): Promise<void> {
+export async function sendTextMessage(to: string, body: string): Promise<string | null> {
   const config = getConfig()
   if (!config) {
     console.warn(`[whatsapp] WHATSAPP_* env vars not set — not sending. Would have sent a text to ${to}: "${body}"`)
-    return
+    return null
   }
 
   const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`
@@ -127,10 +133,76 @@ export async function sendTextMessage(to: string, body: string): Promise<void> {
     const errorBody = await res.text()
     throw new Error(`WhatsApp Cloud API error (${res.status}): ${errorBody}`)
   }
+
+  const data = (await res.json()) as { messages?: { id: string }[] }
+  return data.messages?.[0]?.id ?? null
 }
 
 /**
- * Sends a login OTP via a pre-approved Meta "Authentication" category
+ * Sends the "a buyer wants to negotiate" notification to a MERCHANT's
+ * WhatsApp number to start a negotiation thread (see
+ * src/server/negotiation.ts). This is a business-INITIATED conversation —
+ * the merchant hasn't necessarily messaged our business number recently,
+ * so sendTextMessage's free-form path would be rejected outside any
+ * existing 24h window. Meta requires a pre-approved Template for this,
+ * the same constraint as sendAuthenticationTemplate above.
+ *
+ * REQUIRES SETUP ON META'S SIDE THIS CODE CANNOT DO FOR YOU: create a
+ * Utility or Marketing-category template (Meta Business Manager > Account
+ * tools > Message templates) with a single body variable for the buyer's
+ * opening message, get it approved, and set its name in
+ * WHATSAPP_NEGOTIATION_TEMPLATE_NAME / WHATSAPP_NEGOTIATION_TEMPLATE_LANGUAGE.
+ * Until that template exists and is approved, sends will fail — the
+ * caller (startNegotiationThread) stores the thread/message either way
+ * and marks delivery as failed rather than losing the buyer's message,
+ * so nothing needs to change in this app once the template is approved;
+ * delivery just starts succeeding.
+ */
+export async function sendNegotiationStartTemplate(to: string, buyerMessage: string): Promise<string | null> {
+  const config = getConfig()
+  const templateName = process.env.WHATSAPP_NEGOTIATION_TEMPLATE_NAME
+  const templateLanguage = process.env.WHATSAPP_NEGOTIATION_TEMPLATE_LANGUAGE || 'fr'
+  if (!config || !templateName) {
+    console.warn(
+      `[whatsapp] WHATSAPP_* / WHATSAPP_NEGOTIATION_TEMPLATE_NAME env vars not set — not sending negotiation start to ${to}.`,
+    )
+    return null
+  }
+
+  const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: templateLanguage },
+        components: [{ type: 'body', parameters: [{ type: 'text', text: buyerMessage }] }],
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    const errorBody = await res.text()
+    // Deliberately not thrown further than a log here — the caller needs
+    // to record delivery_status='failed' and move on, not blow up the
+    // buyer-facing request, since this can fail for a reason entirely
+    // outside our control (template not yet approved by Meta).
+    console.error(`[whatsapp] sendNegotiationStartTemplate failed (${res.status}): ${errorBody}`)
+    return null
+  }
+
+  const data = (await res.json()) as { messages?: { id: string }[] }
+  return data.messages?.[0]?.id ?? null
+}
  * template — the ONLY Meta-compliant way to deliver a one-time
  * passcode over WhatsApp. Plain free-form text (sendTextMessage above)
  * is explicitly disallowed for this by Meta's own policy, and doesn't

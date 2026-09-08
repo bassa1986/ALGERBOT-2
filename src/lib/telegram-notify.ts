@@ -13,6 +13,37 @@ interface NotifyOrderParams {
   storeName: string
 }
 
+/**
+ * Generic Bot API text send, returning Telegram's message_id on success
+ * (or null if unconfigured/failed) — used by src/server/negotiation.ts to
+ * record which of our outbound messages a merchant's later "reply" (the
+ * swipe-to-quote gesture) is answering. notifyMerchantOfNewOrder above
+ * doesn't need this (nothing replies to an order notification), so it
+ * keeps its own simpler void-returning fetch rather than being rewritten
+ * on top of this to avoid touching already-working order-notify code.
+ */
+export async function sendTelegramMessage(chatId: number, text: string): Promise<number | null> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  if (!botToken) return null
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    })
+    if (!res.ok) {
+      console.error('Telegram sendTelegramMessage failed', await res.text())
+      return null
+    }
+    const data = (await res.json()) as { result?: { message_id?: number } }
+    return data.result?.message_id ?? null
+  } catch (err) {
+    console.error('Telegram sendTelegramMessage threw', err)
+    return null
+  }
+}
+
 export async function notifyMerchantOfNewOrder(params: NotifyOrderParams): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN
   if (!botToken) return // notification is optional; silently skip if unconfigured

@@ -7,13 +7,7 @@ import { useLocale } from '~/lib/i18n/LocaleContext'
 import { formatDzd } from '~/lib/i18n/format'
 import { ShareSheet, type ShareTarget } from './ShareSheet'
 import { NegotiateSheet } from './NegotiateSheet'
-import {
-  buildProductTelegramLink,
-  buildShareableProductUrl,
-  buildMerchantTelegramLink,
-  type TelegramLinkConfig,
-} from '~/lib/telegram-links'
-import { buildMerchantWhatsAppLink } from '~/lib/whatsapp-links'
+import { buildProductTelegramLink, buildShareableProductUrl, type TelegramLinkConfig } from '~/lib/telegram-links'
 
 const PLACEHOLDER_SWATCH_COLORS = ['#c1502e', '#3b2417', '#e8a33d', '#8a8a8a']
 
@@ -40,12 +34,11 @@ export function ProductCard({
   listView?: boolean
   telegramConfig: TelegramLinkConfig | null
   fbAppId: string | null
-  /** Merchant's own contact channels — for the "Negotiate" button, distinct
-   * from telegramConfig above (which is AlgerBot's own bot/Mini App config,
-   * used for the "share this product" flow, not for contacting the merchant
-   * directly). Only appears on store-page product cards (never the
-   * marketplace homepage, which uses its own separate card markup) since
-   * that's the only place ProductCard is ever rendered. */
+  /** Kept as a prop for call-site compatibility; no longer read inside
+   * this component now that "Negotiate" is a real in-page chat
+   * (NegotiateSheet/src/server/negotiation.ts) rather than a hand-off
+   * message that needed to mention the store by name. Harmless to leave
+   * unused rather than touch every ProductCard call site to remove it. */
   storeName: string
   merchantWhatsappNumber: string | null
   merchantTelegramUsername: string | null
@@ -60,62 +53,9 @@ export function ProductCard({
   // between cards here even though every card renders the same JSX.
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isNegotiateOpen, setIsNegotiateOpen] = useState(false)
-  const [telegramMessageCopied, setTelegramMessageCopied] = useState(false)
 
   const hasWhatsapp = Boolean(merchantWhatsappNumber)
   const hasTelegram = Boolean(merchantTelegramUsername)
-
-  // The message links to THIS product's dedicated share page
-  // (/share/product/$id), not a raw image URL — that page already has a
-  // real og:image tag (see src/routes/share/product/$productId.tsx), so
-  // WhatsApp/Telegram render an actual photo preview card once this link
-  // is sent. Neither wa.me nor t.me links can pre-attach a real image
-  // file to the outgoing message (confirmed: no such capability exists
-  // on either platform) — this is the closest real equivalent, an
-  // auto-generated visual preview rather than a raw attachment.
-  function buildNegotiateMessage(): string {
-    const shareUrl =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/share/product/${product.id}`
-        : `/share/product/${product.id}`
-    return `${t.negotiateMessagePrefix} "${product.name}" (${formatDzd(product.priceCentimes, locale)}) — ${storeName}\n${shareUrl}`
-  }
-
-  function handleNegotiateWhatsApp() {
-    if (!merchantWhatsappNumber) return
-    window.open(buildMerchantWhatsAppLink(merchantWhatsappNumber, buildNegotiateMessage()), '_blank', 'noopener,noreferrer')
-    setIsNegotiateOpen(false)
-  }
-
-  async function handleNegotiateTelegram() {
-    if (!merchantTelegramUsername) return
-    // Telegram's official documented "prefill + share picker" pattern is
-    // t.me/share/url?url=...&text=... (used elsewhere in this app, see
-    // ShareSheet.tsx's handleTelegramShare) — that opens a chat PICKER,
-    // not a specific person's chat directly, and is useless here anyway
-    // since a buyer messaging a stranger merchant almost never already
-    // has them as a saved contact to pick. For a DIRECT personal chat
-    // like this one, some tools claim t.me/<username>?text=... prefills
-    // the message too, but this isn't confirmed in Telegram's own
-    // documented special links, so it isn't relied on here.
-    //
-    // Best available compromise given that real platform limitation: copy
-    // the same message WhatsApp would have pre-filled to the clipboard
-    // right before opening the direct chat, so the buyer pastes instead
-    // of typing product name/price/link from scratch. Not literally
-    // "auto-sent" — no website can make either platform send a message
-    // without the buyer's own tap, on WhatsApp either — but this closes
-    // the gap as far as is actually possible for Telegram.
-    try {
-      await navigator.clipboard.writeText(buildNegotiateMessage())
-      setTelegramMessageCopied(true)
-    } catch {
-      // Clipboard access can fail (permissions, non-HTTPS, older
-      // WebViews) — the chat still opens either way, just without the
-      // copy-paste shortcut; the buyer can still type the message.
-    }
-    window.open(buildMerchantTelegramLink(merchantTelegramUsername), '_blank', 'noopener,noreferrer')
-  }
 
   const isOutOfStock = product.totalStock <= 0
   const isNew = Date.now() - new Date(product.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000
@@ -243,14 +183,13 @@ export function ProductCard({
             contact channel configured, and only ever reachable from a
             store page (ProductCard is never used on the marketplace
             homepage, which has its own separate card markup — see
-            src/routes/index.tsx). Opens NegotiateSheet (a bottom sheet
-            rendered outside this card's own <Link>, see that component's
-            doc comment for why — a dropdown nested inside the card was
-            getting silently clipped by the card's own rounded-corner
-            overflow-hidden). Picking a channel hands off to the real
-            WhatsApp/Telegram app with a message linking to this product's
-            share page, which carries a real photo preview once sent (see
-            buildNegotiateMessage). */}
+            src/routes/index.tsx). Opens NegotiateSheet: a real in-page
+            chat, not a hand-off — see that component's and
+            src/server/negotiation.ts's doc comments for the full design
+            (messages relay to the merchant's real WhatsApp/Telegram, and
+            their replies relay back in via polling). Also see
+            NegotiateSheet's comment for why it's rendered as a sibling
+            of this card's own <Link>, not a descendant of it. */}
         {(hasWhatsapp || hasTelegram) && (
           <div className="relative mt-1.5" onClick={(e) => e.preventDefault()}>
             <button
@@ -327,15 +266,11 @@ export function ProductCard({
       <ShareSheet target={shareTarget} isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} fbAppId={fbAppId} />
       <NegotiateSheet
         isOpen={isNegotiateOpen}
-        onClose={() => {
-          setIsNegotiateOpen(false)
-          setTelegramMessageCopied(false)
-        }}
+        onClose={() => setIsNegotiateOpen(false)}
         hasWhatsapp={hasWhatsapp}
         hasTelegram={hasTelegram}
-        onWhatsApp={handleNegotiateWhatsApp}
-        onTelegram={handleNegotiateTelegram}
-        telegramMessageCopied={telegramMessageCopied}
+        storeSlug={storeSlug}
+        productId={product.id}
       />
     </>
   )
