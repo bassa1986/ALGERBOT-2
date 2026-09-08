@@ -41,6 +41,8 @@ export interface TranslationDictionary {
   home: string
   navLogin: string
   navPricing: string
+  pricingContinueHint: string
+  pricingContinueButton: string
   navPrivacy: string
   navContact: string
   pricingTitle: string
@@ -363,8 +365,10 @@ export const translations: Record<Locale, TranslationDictionary> = {
     noProductsFound: 'لم يتم العثور على أي منتج.',
     trackOrder: 'تتبع طلبيتي',
     home: 'الرئيسية',
-    navLogin: 'دخول التجار',
+    navLogin: 'تسجيل الدخول للتجار',
     navPricing: 'الأسعار',
+    pricingContinueHint: 'تم إنشاء حسابك بنجاح. اختر خطة للمتابعة إلى لوحة التحكم.',
+    pricingContinueButton: 'المتابعة إلى لوحة التحكم',
     navPrivacy: 'الخصوصية',
     navContact: 'اتصل بنا',
     pricingTitle: 'اشترك في AlgerBot',
@@ -667,6 +671,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     home: 'Accueil',
     navLogin: 'Connexion marchands',
     navPricing: 'Tarifs',
+    pricingContinueHint: 'Votre compte a été créé avec succès. Choisissez un plan pour continuer vers le tableau de bord.',
+    pricingContinueButton: 'Continuer vers le tableau de bord',
     navPrivacy: 'Confidentialité',
     navContact: 'Contact',
     pricingTitle: "S'abonner à AlgerBot",

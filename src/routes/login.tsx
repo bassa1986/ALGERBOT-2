@@ -116,8 +116,12 @@ function LoginPage() {
     setOtpError(null)
     setIsOtpBusy(true)
     try {
-      await verifyOtp({ data: { whatsappNumber, code: otpCode } })
-      await navigate({ to: search.redirect })
+      const result = await verifyOtp({ data: { whatsappNumber, code: otpCode } })
+      if (result.needsOnboarding) {
+        await navigate({ to: '/pricing', search: { next: search.redirect } })
+      } else {
+        await navigate({ to: search.redirect })
+      }
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Une erreur s'est produite")
     } finally {
@@ -131,8 +135,12 @@ function LoginPage() {
       setIsAuthenticating(true)
       const parsed = telegramPayloadSchema.parse(user)
       try {
-        await login({ data: parsed })
-        await navigate({ to: search.redirect })
+        const result = await login({ data: parsed })
+        if (result.needsOnboarding) {
+          await navigate({ to: '/pricing', search: { next: search.redirect } })
+        } else {
+          await navigate({ to: search.redirect })
+        }
       } catch {
         // A verification failure here means a stale or tampered widget
         // payload; simplest recovery is to let the merchant retry. Shown
