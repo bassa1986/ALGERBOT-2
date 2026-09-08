@@ -38,6 +38,13 @@ const sql = process.env.DATABASE_URL
 // any real Telegram id range collision risk for a dev/staging database.
 const DEMO_TELEGRAM_ID_BASE = 900000001
 
+// Fake but well-formed Algerian mobile numbers (+213 5xx xx xx xx range,
+// digits-only as whatsapp_number is stored elsewhere in this app) for
+// demo accounts. 213555000001 upward sits outside any real subscriber
+// range Algerian carriers assign, avoiding collision with the unique
+// index on whatsapp_number for real merchant signups.
+const DEMO_WHATSAPP_BASE = 213555000001
+
 function pexelsUrl(photoId) {
   return 'https://images.pexels.com/photos/' + photoId + '/pexels-photo-' + photoId + '.jpeg?auto=compress&cs=tinysrgb&w=1200'
 }
@@ -302,6 +309,7 @@ async function main() {
   for (let i = 0; i < MERCHANTS.length; i++) {
     const m = MERCHANTS[i]
     const telegramUserId = DEMO_TELEGRAM_ID_BASE + i
+    const whatsappNumber = String(DEMO_WHATSAPP_BASE + i)
 
     const existing = await sql`SELECT id FROM merchants WHERE telegram_user_id = ${telegramUserId}`
     if (existing.length > 0) {
@@ -318,8 +326,8 @@ async function main() {
 
     await sql.begin(async (tx) => {
       const [merchant] = await tx`
-        INSERT INTO merchants (telegram_user_id, telegram_username, full_name, status, onboarding_completed_at, plan_id)
-        VALUES (${telegramUserId}, ${'demo_' + m.storeSlug.replace(/-/g, '_')}, ${m.fullName}, 'active', now(), 'starter')
+        INSERT INTO merchants (telegram_user_id, telegram_username, whatsapp_number, full_name, status, onboarding_completed_at, plan_id)
+        VALUES (${telegramUserId}, ${'demo_' + m.storeSlug.replace(/-/g, '_')}, ${whatsappNumber}, ${m.fullName}, 'active', now(), 'starter')
         RETURNING id
       `
 
